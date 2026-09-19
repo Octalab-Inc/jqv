@@ -24,29 +24,29 @@ from jqv.types import Question
 
 
 def run(engine, items, group_size: int):
-    logits, labels, ks = [], [], []
-    # group by state so that a shared state is prefilled once
-    by_state: dict[str, list] = {}
-    for it in items:
-        by_state.setdefault(it["state"], []).append(it)
+    """Decide all items, grouping by state so a shared state is prefilled once. Results are returned in the
+    ORIGINAL item order (val first, then test), so caches from different settings line up row by row."""
+    results = [None] * len(items)
+    by_state: dict[str, list[int]] = {}
+    for idx, it in enumerate(items):
+        by_state.setdefault(it["state"], []).append(idx)
     t0 = time.time()
     n_done = 0
-    for state, group in by_state.items():
-        for i in range(0, len(group), group_size):
-            chunk = group[i : i + group_size]
-            ds = engine.decide(state, [Question(question=c["question"], choices=c["choices"]) for c in chunk])
-            for c, d in zip(chunk, ds):
-                logits.append(d.logits)
-                labels.append(c["answer"])
-                ks.append(len(c["choices"]))
+    for state, idxs in by_state.items():
+        for i in range(0, len(idxs), group_size):
+            chunk = idxs[i : i + group_size]
+            ds = engine.decide(state, [Question(question=items[j]["question"], choices=items[j]["choices"]) for j in chunk])
+            for j, d in zip(chunk, ds):
+                results[j] = d.logits
             n_done += len(chunk)
             print(f"\r{n_done}/{len(items)}  {n_done / (time.time() - t0):.1f} q/s", end="", flush=True)
     print()
+    ks = [len(it["choices"]) for it in items]
     kmax = max(ks)
-    z = np.full((len(logits), kmax), -np.inf, dtype=np.float32)
-    for i, row in enumerate(logits):
+    z = np.full((len(items), kmax), -np.inf, dtype=np.float32)
+    for i, row in enumerate(results):
         z[i, : len(row)] = row
-    return z, np.array(labels), np.array(ks), time.time() - t0
+    return z, np.array([it["answer"] for it in items]), np.array(ks), time.time() - t0
 
 
 def main():

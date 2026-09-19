@@ -1,6 +1,6 @@
 ---
 title: 学習なしで直接 readout の精度を上げる（few-shot state と選択肢巡回シフト平均）を 1.7B で測り engine に組み込む
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-20T05:23:54+09:00
 depends_on: []
@@ -58,3 +58,29 @@ uv run scripts/compare_runs.py --dataset mmlu --runs "zero-shot=packed_qwen3-1.7
 ```
 
 結果ファイルのタグ（`_shots5`, `_permavg`）は本タスクで確定する。
+
+# Result
+
+## Changed
+
+- `jqv/fewshot.py`: MMLU dev からの同 subject 例題 / 固定例題で shared state を作る
+- `jqv/engine/base.py`: `perm_avg`（K 通りの巡回シフトを 1 回の decide にまとめ、意味的順序に戻して確率を平均。`logits` は log(mean p)）。全 engine と HeadEngine / GenerateEngine が `_decide_plain` 経由で対応
+- `jqv/types.py`: `Decision.perm_avg_k`
+- `scripts/eval.py`: `--shots`, `--shots-mode subject|fixed`, `--perm-avg`、結果行を元の item 順で保存（state ごとの grouping で順序がずれ対応比較が壊れていたバグを修正）
+- `scripts/bench.py`: `--perm-avg`（`packed:permavg` 行）
+- `tests/test_permavg.py`: 確率の和、巡回不変性、few-shot 書式
+- `README.md`: 「学習なしの精度向上」節（表、対応比較、コスト、固定例題の文字 prior 誘導）
+
+## Verified
+
+- `uv run pytest`: 35 passed
+- MMLU / JMMLU 各 5 条件（test 800）+ bridge perm_avg、`fit_temperature.py`、`compare_runs.py`（McNemar）、bench 1 条件
+
+## Deviations
+
+- eval.py の行順バグにより few-shot 系 6 run を再実行した（bf16 のため再実行前後で 1 ポイント程度の差）
+- JMMLU の few-shot 例題は英語（MMLU dev）のまま
+
+## Remaining
+
+- 巡回シフト以外の順序集約（全順列、部分集合）は未検証

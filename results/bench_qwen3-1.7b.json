@@ -313,6 +313,18 @@
       "speedup_vs_naive": 20.046810784518353
     },
     {
+      "engine": "packed:permavg",
+      "readout": "full",
+      "state_tokens": 2038,
+      "questions": 100,
+      "question_tokens": 5992,
+      "seconds": 3.559065749985166,
+      "questions_per_sec": 28.09726119850885,
+      "naive_equiv_tokens_per_sec": 58945.806213575685,
+      "driver_mem_gb": 4.404740096,
+      "speedup_vs_naive": 11.578292280826176
+    },
+    {
       "engine": "packed:rows",
       "readout": "rows",
       "state_tokens": 2038,

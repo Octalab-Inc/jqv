@@ -1,0 +1,147 @@
+{
+  "dataset": "jmmlu",
+  "n": 800,
+  "baseline": "zero-shot",
+  "rows": [
+    {
+      "run": "zero-shot",
+      "accuracy": 0.46625,
+      "ci95": 0.03456920915894663,
+      "delta": 0.0,
+      "delta_ci": [
+        0.0,
+        0.0
+      ],
+      "win": 0,
+      "lose": 0,
+      "mcnemar_p": 1.0,
+      "T": 12.843724727032852,
+      "selective": {
+        "0.5": {
+          "coverage": 0.5175,
+          "accuracy": 0.5869565217391305
+        },
+        "0.7": {
+          "coverage": 0.04875,
+          "accuracy": 0.8717948717948718
+        },
+        "0.9": {
+          "coverage": 0.0,
+          "accuracy": null
+        }
+      }
+    },
+    {
+      "run": "5-shot subject",
+      "accuracy": 0.46875,
+      "ci95": 0.0345804937338234,
+      "delta": 0.0025,
+      "delta_ci": [
+        -0.03125,
+        0.03625
+      ],
+      "win": 98,
+      "lose": 96,
+      "mcnemar_p": 0.9427889997065577,
+      "T": 13.860028743036697,
+      "selective": {
+        "0.5": {
+          "coverage": 0.42,
+          "accuracy": 0.6041666666666666
+        },
+        "0.7": {
+          "coverage": 0.0075,
+          "accuracy": 0.8333333333333334
+        },
+        "0.9": {
+          "coverage": 0.0,
+          "accuracy": null
+        }
+      }
+    },
+    {
+      "run": "5-shot fixed",
+      "accuracy": 0.42125,
+      "ci95": 0.03421578724616752,
+      "delta": -0.045,
+      "delta_ci": [
+        -0.07875,
+        -0.01
+      ],
+      "win": 83,
+      "lose": 119,
+      "mcnemar_p": 0.01359503941721217,
+      "T": 13.901623248310568,
+      "selective": {
+        "0.5": {
+          "coverage": 0.26625,
+          "accuracy": 0.6338028169014085
+        },
+        "0.7": {
+          "coverage": 0.00125,
+          "accuracy": 1.0
+        },
+        "0.9": {
+          "coverage": 0.0,
+          "accuracy": null
+        }
+      }
+    },
+    {
+      "run": "perm-avg",
+      "accuracy": 0.485,
+      "ci95": 0.0346326370639026,
+      "delta": 0.01875,
+      "delta_ci": [
+        -0.00625,
+        0.045
+      ],
+      "win": 62,
+      "lose": 47,
+      "mcnemar_p": 0.179671070794672,
+      "T": 8.454459666722945,
+      "selective": {
+        "0.5": {
+          "coverage": 0.315,
+          "accuracy": 0.7103174603174603
+        },
+        "0.7": {
+          "coverage": 0.18,
+          "accuracy": 0.7986111111111112
+        },
+        "0.9": {
+          "coverage": 0.0,
+          "accuracy": null
+        }
+      }
+    },
+    {
+      "run": "5-shot subject + perm-avg",
+      "accuracy": 0.4975,
+      "ci95": 0.03464779917253042,
+      "delta": 0.03125,
+      "delta_ci": [
+        -0.00125,
+        0.065
+      ],
+      "win": 105,
+      "lose": 80,
+      "mcnemar_p": 0.0773621913640207,
+      "T": 9.735484599828792,
+      "selective": {
+        "0.5": {
+          "coverage": 0.25125,
+          "accuracy": 0.681592039800995
+        },
+        "0.7": {
+          "coverage": 0.105,
+          "accuracy": 0.8214285714285714
+        },
+        "0.9": {
+          "coverage": 0.0,
+          "accuracy": null
+        }
+      }
+    }
+  ]
+}
