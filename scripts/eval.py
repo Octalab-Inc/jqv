@@ -71,7 +71,8 @@ def main():
     probs = torch.tensor(z).softmax(-1).numpy()
     m = summary(probs[~is_val], y[~is_val])
     m.update(engine=a.engine, model=rt.model_id, dtype=str(rt.dtype), dataset=a.dataset, seconds=secs,
-             questions_per_sec=len(y) / secs)
+             questions_per_sec=len(y) / secs, prompt_hash=rt.prompt.hash, n_val=len(val),
+             choice_counts=sorted({int(c) for c in k}))
     if a.engine == "generate":
         m["accuracy_note"] = "generate engine: probabilities are one-hot, calibration metrics not meaningful"
     print(m)

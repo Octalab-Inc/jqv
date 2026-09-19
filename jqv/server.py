@@ -5,6 +5,9 @@
 
 Configuration via env: JQV_MODEL, JQV_ENGINE (naive|kvcache|packed|generate), JQV_TEMPERATURE_FILE,
 JQV_DTYPE, JQV_DEVICE. Or run `python -m jqv.server --model ... --engine ...`.
+
+A temperature file records the model / prompt / dataset it was fitted on. Startup fails if it was fitted
+for a different model or prompt layout, unless JQV_ALLOW_CALIBRATION_MISMATCH=1 (then it warns).
 """
 
 from __future__ import annotations
@@ -16,20 +19,32 @@ from fastapi import FastAPI
 
 from jqv.calibration import TemperatureScaler
 from jqv.engine import make_engine
-from jqv.model import load_runtime
-from jqv.types import DecisionRequest, DecisionResponse
+from jqv.model import DEFAULT_MODEL, default_style_for, load_runtime
+from jqv.prompt import prompt_hash
+from jqv.types import CalibrationInfo, DecisionRequest, DecisionResponse
 
 _state: dict = {}
 
 
+def load_calibration(model_id: str) -> TemperatureScaler | None:
+    """Load JQV_TEMPERATURE_FILE and verify its provenance against the model / prompt we are about to run.
+    Done before the (slow) model load so a mismatch fails fast."""
+    path = os.environ.get("JQV_TEMPERATURE_FILE")
+    if not path:
+        return None
+    ts = TemperatureScaler.load(path)
+    ts.check_compatible(model_id, prompt_hash(default_style_for(model_id)))
+    return ts
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    rt = load_runtime(os.environ.get("JQV_MODEL"), os.environ.get("JQV_DEVICE"), os.environ.get("JQV_DTYPE"))
-    temp = None
-    if os.environ.get("JQV_TEMPERATURE_FILE"):
-        temp = TemperatureScaler.load(os.environ["JQV_TEMPERATURE_FILE"]).temperature
+    model_id = os.environ.get("JQV_MODEL") or DEFAULT_MODEL
+    ts = load_calibration(model_id)
+    rt = load_runtime(model_id, os.environ.get("JQV_DEVICE"), os.environ.get("JQV_DTYPE"))
     _state["rt"] = rt
-    _state["engine"] = make_engine(os.environ.get("JQV_ENGINE", "packed"), rt, temp)
+    _state["calibration"] = CalibrationInfo(**ts.info()) if ts else None
+    _state["engine"] = make_engine(os.environ.get("JQV_ENGINE", "packed"), rt, ts.temperature if ts else None)
     yield
     _state.clear()
 
@@ -41,7 +56,9 @@ app = FastAPI(title="jqv Decision API", lifespan=lifespan)
 def health():
     rt = _state.get("rt")
     return {"ok": rt is not None, "model": getattr(rt, "model_id", None),
-            "engine": getattr(_state.get("engine"), "name", None), "device": str(getattr(rt, "device", None))}
+            "engine": getattr(_state.get("engine"), "name", None), "device": str(getattr(rt, "device", None)),
+            "prompt_hash": rt.prompt.hash if rt else None,
+            "calibration": _state["calibration"].model_dump() if _state.get("calibration") else None}
 
 
 @app.post("/decision", response_model=DecisionResponse)
@@ -50,7 +67,9 @@ def decision(req: DecisionRequest) -> DecisionResponse:
     return DecisionResponse(
         engine=eng.name,
         model=_state["rt"].model_id,
+        prompt_hash=_state["rt"].prompt.hash,
         temperature=eng.temperature or 1.0,
+        calibration=_state.get("calibration"),
         decisions=eng.decide(req.state, req.questions),
     )
 

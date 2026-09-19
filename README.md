@@ -66,7 +66,8 @@ macOS / Apple Silicon（MPS）を前提に HF Transformers だけで動く。CUD
 ## 使い方
 
 ```bash
-# API サーバ
+# API サーバ（temperature ファイルは MMLU-en で学習した T=11.9 の流用。橋梁点検ドメインでは未検証。
+# 応答の calibration.dataset にその出所が入る）
 uv run python -m jqv.server --engine packed --temperature-file results/mmlu_packed_qwen3-1.7b_temperature.json
 curl -s localhost:8000/decision -H 'content-type: application/json' -d @- <<'JSON'
 {"state": "橋梁A: 主桁下フランジに広範囲の腐食。床版にひび割れなし。支承は良好。",
@@ -99,6 +100,15 @@ uv run scripts/isolation_test.py                                              # 
 - `bench.py` は各条件の完了ごとに結果を `results/bench_<model>.jsonl` へ追記し、残り時間の推定を表示する。中断後に同じコマンドで再開できる。
 
 結果は `results/` に JSON / PNG / Markdown で出る。
+
+### 校正温度の出所（provenance）
+
+温度は学習した分布にしか通用しない。`fit_temperature.py` が書く temperature ファイルには
+`model`, `engine`, `prompt_hash`（プロンプト形式と system prompt から算出）, `dataset`, `n_val`, `choice_counts`, `fitted_at` が入り、
+サーバは起動時に `model` と `prompt_hash` を実行時と照合する。不一致なら（モデルをロードする前に）起動に失敗し、
+`JQV_ALLOW_CALIBRATION_MISMATCH=1` のときだけ警告で続行する。旧形式（`temperature` だけ）のファイルも読めるが未検証扱いになる。
+`/decision` の応答には `calibration`（temperature と上記メタデータ）が入り、temperature 未設定なら `null`。
+`/health` にも同じ情報と `prompt_hash` が出る。
 
 ## 結果（Qwen3-1.7B, bf16, M5 Max）
 

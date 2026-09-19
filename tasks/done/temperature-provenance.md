@@ -1,6 +1,6 @@
 ---
 title: 校正温度の出所を temperature ファイルと API 応答から追跡できるようにする
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-20T01:50:41+09:00
 depends_on: []
@@ -49,3 +49,32 @@ cat results/mmlu_packed_qwen3-1.7b_temperature.json
 JQV_DEVICE=cpu JQV_DTYPE=float32 JQV_TEMPERATURE_FILE=results/mmlu_packed_qwen3-1.7b_temperature.json uv run uvicorn jqv.server:app --port 8011
 curl -s localhost:8011/decision -H 'content-type: application/json' -d '{"state":"","questions":[{"question":"1+1=?","choices":["1","2"]}]}'
 ```
+
+# Result
+
+## Changed
+
+- `jqv/prompt.py`: `prompt_hash(style)`（形式バージョン + PromptStyle の sha256 先頭 12 桁）と `PromptBuilder.hash`
+- `jqv/model.py`: `default_style_for(model_id)` を切り出し
+- `jqv/calibration.py`: `TemperatureScaler.meta`、`save(**meta)`（fitted_at 自動付与）、旧形式も読む `load`、`check_compatible`（`CalibrationMismatch` / `JQV_ALLOW_CALIBRATION_MISMATCH=1` で警告）、`info()`
+- `jqv/types.py`: `CalibrationInfo`、`DecisionResponse.calibration` と `prompt_hash`
+- `jqv/server.py`: モデルロード前に temperature ファイルの provenance を照合。`/health` と `/decision` に calibration を返す
+- `scripts/eval.py`: JSON に `prompt_hash`, `n_val`, `choice_counts` を記録
+- `scripts/fit_temperature.py`: companion JSON から provenance を埋めて保存（旧キャッシュは既定 style から hash を導出）
+- `tests/test_calibration.py`: roundtrip、旧形式、model/prompt 不一致、prompt_hash、fit の回復
+- `README.md`: provenance の節と API 例の注記
+
+## Verified
+
+- `uv run pytest`: 22 passed
+- `fit_temperature.py` 再実行で mmlu / jmmlu の temperature JSON にメタデータが入った（T は 11.94 / 12.82 で不変）
+- `load_calibration('Qwen/Qwen3-4B')` が `CalibrationMismatch` を送出（モデルロード前）、`JQV_ALLOW_CALIBRATION_MISMATCH=1` で警告のみ
+- CPU でサーバ起動、`/health` と `/decision` に `calibration`（dataset=mmlu, n_val=400, prompt_hash 一致）が返る
+
+## Deviations
+
+- サーバ不一致の検証は uvicorn 起動ではなく `jqv.server.load_calibration` の直接呼び出しで行った（macOS に `timeout` コマンドがないため）。起動時の経路は同じ関数を通る
+
+## Remaining
+
+- なし

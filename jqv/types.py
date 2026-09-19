@@ -38,8 +38,25 @@ class DecisionRequest(BaseModel):
     questions: list[Question] = Field(min_length=1)
 
 
+class CalibrationInfo(BaseModel):
+    """Provenance of the temperature used for `calibrated_probabilities`. Calibration is only valid for the
+    distribution it was fitted on; consumers should check `dataset` before trusting the numbers elsewhere."""
+
+    temperature: float
+    model: str | None = None
+    engine: str | None = None
+    prompt_hash: str | None = None
+    dataset: str | None = None
+    n_val: int | None = None
+    choice_counts: list[int] | None = None
+    fitted_at: str | None = None
+    dtype: str | None = None
+
+
 class DecisionResponse(BaseModel):
     engine: str
     model: str
+    prompt_hash: str
     temperature: float
+    calibration: CalibrationInfo | None = None  # None when no temperature file is configured
     decisions: list[Decision]

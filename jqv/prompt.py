@@ -7,10 +7,13 @@ same token ids can be used by every engine (naive concat, KV-cache branch, packe
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import hashlib
+import json
+from dataclasses import asdict, dataclass
 from functools import lru_cache
 
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+PROMPT_FORMAT_VERSION = 1  # bump when prefix_text / suffix_text layout changes
 
 DEFAULT_SYSTEM = (
     "You are a decision model. Read the document, then answer each question by choosing "
@@ -26,11 +29,21 @@ class PromptStyle:
     letter_prefix: str = " "  # readout token = letter_prefix + letter (" A", " B", ...)
 
 
+def prompt_hash(style: PromptStyle) -> str:
+    """Short stable id of the prompt layout + style. Calibration is only valid for the prompt it was fitted on."""
+    payload = json.dumps({"format": PROMPT_FORMAT_VERSION, **asdict(style)}, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
+
+
 class PromptBuilder:
     def __init__(self, tokenizer, style: PromptStyle | None = None):
         self.tok = tokenizer
         self.style = style or PromptStyle()
         self._choice_ids = self._resolve_choice_ids()
+
+    @property
+    def hash(self) -> str:
+        return prompt_hash(self.style)
 
     # ----- text -----
     def prefix_text(self, state: str) -> str:
