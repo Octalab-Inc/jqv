@@ -420,6 +420,35 @@ Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk で�
 - ここでの MMLU 0.55 は zero-shot・非 thinking・1,200 問サブセットの値で、公式評価（5-shot、全 14,042 問）とは比較できない。
   bridge は 30 問（1 問 = 3.3 ポイント）なので動作確認以上の意味はない。
 
+## Backbone スケーリング（`scripts/scaling_table.py`, `results/scaling_table.md`）
+
+同じコード・プロンプト・1,200 問サブセット（seed 0、val 400 / test 800）で backbone だけを変える。dense の Qwen3 に限定し、
+MoE（30B-A3B）と Qwen3.5（hybrid attention）は attention / KV 構造の議論が変わるため使わない。Jev の行は Hume の測定値（zero-shot、温度なし）。
+
+| backbone | params | B zero-shot: MMLU / JMMLU | B ECE raw / +T (T) | B + perm_avg: MMLU / JMMLU | perm_avg ECE raw / +T | 5-shot + perm_avg: MMLU | slot+LoRA: MMLU / JMMLU | slot ECE raw / +T | packed q/s (S=2k, Q=100) plain / perm_avg |
+|---|---:|---:|---|---:|---|---:|---:|---|---:|
+| qwen3-1.7b | 1.7B | 0.554 / 0.466 | 0.413 / 0.080 (12.0) | 0.584 / 0.485 | 0.195 / 0.063 | 0.578 | 0.575 / 0.505 (slot_lora) | 0.137 / 0.044 | 48.6 / 28.1 |
+| qwen3-14b | 14.8B | 0.750 / 0.710 | 0.207 / 0.042 (5.1) | 0.781 / 0.729 | 0.113 / 0.047 | 0.782 | - / - | - / - | 9.3 / 4.4 |
+| Jev (TypeSafe, Hume 2025) | ? | **0.918** / - | 0.031 (zero-shot, no T) | - | - | - | - | - | 30k tok in ~160 ms |
+
+### 1.7B → 14B で分かったこと
+
+- **精度はほぼ backbone で決まる。** zero-shot の直接 readout で MMLU 0.554 → 0.750（+19.6）、JMMLU 0.466 → 0.710（+24.4）。
+  1.7B で有効だった巡回シフト平均は 14B でも同じ幅で効き（+3.1、p=0.001）、5-shot は 14B では +1.9（p=0.12）、両方で 0.782（p=0.008）。
+  学習なしの 14B で 0.78、Jev の 0.918 との差は 14 ポイント。
+- **生の校正も backbone で良くなる。** 生 ECE 0.41 → 0.21、温度 12 → 5.1。温度後の ECE は 0.042（MMLU）/ 0.046（JMMLU）で、
+  Jev の 0.031 との差は学習なしでも 0.01 台になった。巡回平均後の生 ECE は 0.113。
+- **温度の転移は 1.7B と同じ構造。** MMLU↔JMMLU は転移する（T ≈ 5.0 で ECE 0.040〜0.048）。bridge は T=1 で ECE 0.000（30 問全問正解、confidence 0.99999）、
+  MMLU の T を当てると 0.053 に悪化するが、1.7B の 0.24 より害は小さい。
+- **共有計算の効果は backbone に依らない。** S=2038・Q=100 で packed は naive の 22 倍（1.7B は 20 倍）、generate ≈ naive（1.04 倍）も同じ。
+  絶対速度は packed 9.3 q/s（1.7B の 48.6 q/s の 1/5.2、パラメータ比 8.7 倍より緩やか）。shared (D3) は S=8038・Q=100 で packed より 11% 速く、Q=1000 では遅い（1.7B と同傾向）。
+- **isolation と選択肢相互作用も同じ。** packed / shared の兄弟質問への漏れ 0.0008、負対照 0.995。5 番目選択肢の Δlog-odds は bridge 21 問で
+  −1.24 ± 0.42（1.7B は −0.49 ± 0.39）で、Hume が Jev で見た負方向のずれが 14B ではより強く出る。
+- **等価性テストは fp32 で厳密に通り、bf16 では logit 差がちょうど 1 ulp（0.5）**。テストの許容差を dtype 依存にした。
+- 14B の bench 所要時間: naive Q=100 で 238 s（1.7B 41 s）。以後 naive / generate は S=2000 までに限定する。
+
+次は 14B で slot + LoRA（λ sweep）を行い、その最良設定を 32B に持っていく。
+
 ## 設計メモ
 
 - **prefix / suffix の分割 tokenize**: state 側と質問側を別々に tokenize し、全 engine が同じ token id 列を使う。

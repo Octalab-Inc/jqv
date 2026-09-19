@@ -1,6 +1,6 @@
 ---
 title: Qwen3-14B で語彙 readout (B) のベースラインと速度を 1.7B と同条件で測る
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-20T05:14:24+09:00
 depends_on:
@@ -69,3 +69,26 @@ uv run scripts/scaling_table.py
 ```
 
 所要時間の目安: ダウンロード（29.5 GB）+ 評価 15 分 + bench 40 分。
+
+# Result
+
+## Changed
+
+- `results/{mmlu,jmmlu,bridge}_packed_qwen3-14b*.{json,npz}`、`*_temperature.json`、`*_calibration.json`、`transfer_qwen3-14b.json`、`compare_{mmlu,jmmlu}_qwen3-14b.json`、`isolation_qwen3-14b.json`、`bench_qwen3-14b.{jsonl,json,md}`、`scaling_table.{md,json}`
+- `scripts/scaling_table.py`: base model だけを行にし、perm_avg / 5-shot+perm_avg / slot+LoRA / q/s を列にした
+- `tests/test_engines_equivalence.py`, `tests/test_isolation.py`: 許容差を dtype 依存に（bf16 は 1 ulp）
+- `README.md`: 「Backbone スケーリング」節（表と 1.7B → 14B の読み）
+
+## Verified
+
+- `JQV_MODEL=Qwen/Qwen3-14B JQV_TEST_DTYPE=bfloat16 uv run pytest tests/test_engines_equivalence.py tests/test_isolation.py`: 16 passed（fp32 でも packed / shared / isolation を確認）
+- eval（zero-shot / perm_avg / 5-shot / 5-shot+perm_avg）、fit_temperature、transfer_temperature、compare_runs、isolation_test、bench（S=2000 全 engine Q=10/100、S=8000 packed/shared Q=100/1000、perm_avg 1 条件）、scaling_table
+
+## Deviations
+
+- 5-shot（同 subject）と 5-shot + perm_avg を追加で測った（accuracy タスクの「同 subject 版のみ 1 回確認」に従う）
+- compare_runs のシェル引数ミスで MMLU の対応比較を手動で再実行した
+
+## Remaining
+
+- なし

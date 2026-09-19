@@ -1,0 +1,13 @@
+{
+  "temperature": 5.9329812523065275,
+  "model": "Qwen/Qwen3-14B",
+  "engine": "packed",
+  "dataset": "mmlu",
+  "dtype": "torch.bfloat16",
+  "prompt_hash": "4f85a0b34776",
+  "n_val": 400,
+  "choice_counts": [
+    4
+  ],
+  "fitted_at": "2026-09-20T06:53:24+09:00"
+}

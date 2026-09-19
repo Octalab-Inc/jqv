@@ -38,54 +38,72 @@ def slot_runs(slug: str, ds: str) -> dict[str, dict]:
     return out
 
 
+def variant(slug: str, ds: str, tag: str):
+    m = jload(RESULTS / f"{ds}_packed_{slug}{tag}.json")
+    c = jload(RESULTS / f"{ds}_packed_{slug}{tag}_calibration.json")
+    return m, c
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--slot-run", nargs="*", default=[], help="slug=run to pin the slot+LoRA run used per model")
     a = ap.parse_args()
     pinned = dict(s.split("=", 1) for s in a.slot_run)
-    slugs = sorted({re.search(r"mmlu_packed_(qwen3-.+?)\.json$", f.split("/")[-1]).group(1)
+    # base model slugs only (qwen3-1.7b, qwen3-14b, ...); variant caches carry a _suffix and are read as columns
+    slugs = sorted({re.match(r"mmlu_packed_(qwen3-[0-9.]+b)\.json$", f.split("/")[-1]).group(1)
                     for f in glob.glob(str(RESULTS / "mmlu_packed_qwen3-*.json"))
-                    if "_calibration" not in f and "_temperature" not in f},
+                    if re.match(r"mmlu_packed_(qwen3-[0-9.]+b)\.json$", f.split("/")[-1])},
                    key=lambda s: float(re.search(r"([\d.]+)b", s).group(1)))
     rows = []
     for slug in slugs:
-        raw = {ds: jload(RESULTS / f"{ds}_packed_{slug}.json") for ds in ("mmlu", "jmmlu")}
-        cal = {ds: jload(RESULTS / f"{ds}_packed_{slug}_calibration.json") for ds in ("mmlu", "jmmlu")}
+        raw = {ds: variant(slug, ds, "")[0] for ds in ("mmlu", "jmmlu")}
+        cal = {ds: variant(slug, ds, "")[1] for ds in ("mmlu", "jmmlu")}
+        pa = {ds: variant(slug, ds, "_permavg") for ds in ("mmlu", "jmmlu")}
+        fs = variant(slug, "mmlu", "_shots5_permavg")
         runs = slot_runs(slug, "mmlu")
         run = pinned.get(slug)
         if run is None and runs:  # default: lowest MMLU NLL after temperature (val-fitted)
             run = min(runs, key=lambda r: (runs[r]["calibration"] or {}).get("after", {}).get("nll", 9e9))
         slot = runs.get(run) if run else None
         slot_j = slot_runs(slug, "jmmlu").get(run) if run else None
-        qps = None
+        qps = qps_pa = None
         bench = RESULTS / f"bench_{slug}.jsonl"
         if bench.exists():
             for line in bench.read_text().splitlines():
                 r = json.loads(line)
-                if r["engine"] == "packed" and r["questions"] == 100 and 2000 <= r["state_tokens"] <= 2100:
-                    qps = r["questions_per_sec"]
+                if r["questions"] == 100 and 2000 <= r["state_tokens"] <= 2100:
+                    if r["engine"] == "packed":
+                        qps = r["questions_per_sec"]
+                    elif r["engine"] == "packed:permavg":
+                        qps_pa = r["questions_per_sec"]
+        g = lambda m, k: (m[k] if m else None)
         rows.append({
             "model": slug, "params": PARAMS.get(slug, "?"),
-            "mmlu_acc_raw": raw["mmlu"]["accuracy"] if raw["mmlu"] else None,
-            "jmmlu_acc_raw": raw["jmmlu"]["accuracy"] if raw["jmmlu"] else None,
-            "ece_raw": cal["mmlu"]["before"]["ece"] if cal["mmlu"] else (raw["mmlu"]["ece"] if raw["mmlu"] else None),
+            "mmlu_acc_raw": g(raw["mmlu"], "accuracy"), "jmmlu_acc_raw": g(raw["jmmlu"], "accuracy"),
+            "ece_raw": cal["mmlu"]["before"]["ece"] if cal["mmlu"] else g(raw["mmlu"], "ece"),
             "ece_T": cal["mmlu"]["after"]["ece"] if cal["mmlu"] else None,
             "T": cal["mmlu"]["temperature"] if cal["mmlu"] else None,
+            "mmlu_acc_permavg": g(pa["mmlu"][0], "accuracy"), "jmmlu_acc_permavg": g(pa["jmmlu"][0], "accuracy"),
+            "permavg_ece_raw": pa["mmlu"][1]["before"]["ece"] if pa["mmlu"][1] else g(pa["mmlu"][0], "ece"),
+            "permavg_ece_T": pa["mmlu"][1]["after"]["ece"] if pa["mmlu"][1] else None,
+            "mmlu_acc_shots5_permavg": g(fs[0], "accuracy"),
             "slot_run": run,
             "mmlu_acc_slot": slot["metrics"]["accuracy"] if slot else None,
             "jmmlu_acc_slot": slot_j["metrics"]["accuracy"] if slot_j else None,
             "slot_ece_raw": slot["calibration"]["before"]["ece"] if slot and slot["calibration"] else (slot["metrics"]["ece"] if slot else None),
             "slot_ece_T": slot["calibration"]["after"]["ece"] if slot and slot["calibration"] else None,
-            "packed_qps_s2k_q100": qps,
+            "packed_qps_s2k_q100": qps, "packed_permavg_qps_s2k_q100": qps_pa,
         })
     f = lambda x, d=3: "-" if x is None else (f"{x:.{d}f}" if isinstance(x, float) else str(x))
-    md = ["| backbone | params | B: MMLU acc | B: JMMLU acc | B: ECE raw / +T (T) | slot+LoRA run | slot: MMLU acc | slot: JMMLU acc | slot: ECE raw / +T | packed q/s (S=2k, Q=100) |",
-          "|---|---:|---:|---:|---|---|---:|---:|---|---:|"]
+    md = ["| backbone | params | B zero-shot: MMLU / JMMLU | B ECE raw / +T (T) | B + perm_avg: MMLU / JMMLU | perm_avg ECE raw / +T | 5-shot + perm_avg: MMLU | slot+LoRA: MMLU / JMMLU | slot ECE raw / +T | packed q/s (S=2k, Q=100) plain / perm_avg |",
+          "|---|---:|---:|---|---:|---|---:|---:|---|---:|"]
     for r in rows:
-        md.append(f"| {r['model']} | {r['params']} | {f(r['mmlu_acc_raw'])} | {f(r['jmmlu_acc_raw'])} | "
-                  f"{f(r['ece_raw'])} / {f(r['ece_T'])} ({f(r['T'], 1)}) | {r['slot_run'] or '-'} | {f(r['mmlu_acc_slot'])} | "
-                  f"{f(r['jmmlu_acc_slot'])} | {f(r['slot_ece_raw'])} / {f(r['slot_ece_T'])} | {f(r['packed_qps_s2k_q100'], 1)} |")
-    md.append(f"| {JEV['model']} | ? | **{JEV['mmlu_acc_raw']:.3f}** | - | {JEV['ece_raw']:.3f} (zero-shot, no T) | - | - | - | - | 30k tok in ~160 ms |")
+        md.append(f"| {r['model']} | {r['params']} | {f(r['mmlu_acc_raw'])} / {f(r['jmmlu_acc_raw'])} | "
+                  f"{f(r['ece_raw'])} / {f(r['ece_T'])} ({f(r['T'], 1)}) | {f(r['mmlu_acc_permavg'])} / {f(r['jmmlu_acc_permavg'])} | "
+                  f"{f(r['permavg_ece_raw'])} / {f(r['permavg_ece_T'])} | {f(r['mmlu_acc_shots5_permavg'])} | "
+                  f"{f(r['mmlu_acc_slot'])} / {f(r['jmmlu_acc_slot'])}{(' (' + r['slot_run'] + ')') if r['slot_run'] else ''} | "
+                  f"{f(r['slot_ece_raw'])} / {f(r['slot_ece_T'])} | {f(r['packed_qps_s2k_q100'], 1)} / {f(r['packed_permavg_qps_s2k_q100'], 1)} |")
+    md.append(f"| {JEV['model']} | ? | **{JEV['mmlu_acc_raw']:.3f}** / - | {JEV['ece_raw']:.3f} (zero-shot, no T) | - | - | - | - | - | 30k tok in ~160 ms |")
     print("\n".join(md))
     dump_json({"rows": rows, "jev": JEV}, RESULTS / "scaling_table.json")
     (RESULTS / "scaling_table.md").write_text("\n".join(md) + "\n")
