@@ -26,3 +26,9 @@ def test_packed_causal_leaks(rt):
     """Negative control: plain causal packing lets the sibling's secret leak into the target."""
     p_leak, p_alone, _ = _secret_probs("packed_causal", rt)
     assert p_leak[1] - p_alone[1] > 0.1
+
+
+def test_shared_is_isolated(rt):
+    p_leak, p_alone, p_state = _secret_probs("shared", rt)
+    assert max(abs(a - b) for a, b in zip(p_leak, p_alone)) < 1e-3
+    assert p_state[1] > 0.5

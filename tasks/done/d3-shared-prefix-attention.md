@@ -1,6 +1,6 @@
 ---
 title: L×L mask なしで shared prefix attention を物理的に共有する engine (D3) を追加する
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-20T01:50:45+09:00
 depends_on: []
@@ -54,3 +54,30 @@ uv run scripts/bench.py --engines naive kvcache packed d3 --state-tokens 8000 --
 # Open Questions
 
 - MPS では手書きの matmul + softmax が fused SDPA より遅い可能性がある。結果は結果として記録し、CUDA 版での再測定を次の判断材料にする
+
+# Result
+
+## Changed
+
+- `jqv/engine/shared.py`: D3 engine `shared`。`AttentionInterface.register("jqv_shared", …)` で差し込むカスタム attention。prefix 行は causal SDPA、branch 行は (a) shared prefix への 1 ブロック attention（`backend="fused"`: zero key + probe value で分配関数を取り出す 2 回の SDPA、`backend="manual"`: chunk した matmul + softmax 統計）と (b) branch 内 causal attention（padding バッチ）を log-sum-exp で合成。prefix cache + chunk 対応。`backend="flex"`（CUDA、FlexAttention BlockMask）は未検証
+- `jqv/engine/packed.py`: `chunk_tokens`（既定 2048）を追加。cache 経路の branch タイルを小さくすると masked kernel の無駄が減り、S=8k・Q=1000 で 36 s → 15.9 s
+- `jqv/engine/__init__.py`: `shared` を登録
+- `scripts/bench.py`: `shared` を追加、`driver_mem_gb` 列（MPS の driver allocated、高水位の目安）
+- `tests/test_engines_equivalence.py`: shared（single / manual / cache / chunk）が naive と一致、rows readout も一致。`tests/test_isolation.py`: shared の isolation
+- `README.md`: engine 表に D3、ベンチ表に shared 列と Q=1000 行、「D3」節（分解、probe の仕組み、MPS で負ける理由、CUDA/Jev 規模の見通し）
+
+## Verified
+
+- `uv run pytest`: 30 passed
+- `uv run scripts/bench.py --engines packed shared --state-tokens 2000 8000 --questions 1000` と `--engines shared --state-tokens 500 2000 8000 --questions 10 100`
+- S=8038・Q=1000 で shared が完走（22.5 s、packed 15.9 s、kvcache 63.8 s）
+
+## Deviations
+
+- `driver_mem_gb` は MPS の driver allocated で、peak ではなく allocator の高水位の目安。旧 row には値がない
+- 最適化の途中経過（head dim 136 の probe channel 版 49 s、manual 版 57 s、index キャッシュ前 25.8 s）は README に理由とともに記載
+
+## Remaining
+
+- CUDA 環境で `backend="flex"` の検証と再計測
+- Jev 規模（state 23k × 5,000 問）での実測

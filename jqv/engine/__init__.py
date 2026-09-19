@@ -5,12 +5,14 @@ from jqv.engine.generate import GenerateEngine
 from jqv.engine.kvcache import KVCacheEngine
 from jqv.engine.naive import NaiveEngine
 from jqv.engine.packed import PackedEngine
+from jqv.engine.shared import SharedPrefixEngine
 
 ENGINES: dict[str, type[DecisionEngine]] = {
     "generate": GenerateEngine,  # A
     "naive": NaiveEngine,  # B
     "kvcache": KVCacheEngine,  # D1
     "packed": PackedEngine,  # D2
+    "shared": SharedPrefixEngine,  # D3
 }
 
 
@@ -24,4 +26,5 @@ def make_engine(name: str, rt, temperature: float | None = None, **kwargs) -> De
     return cls(rt, temperature, **kwargs)
 
 
-__all__ = ["ENGINES", "make_engine", "DecisionEngine", "GenerateEngine", "NaiveEngine", "KVCacheEngine", "PackedEngine"]
+__all__ = ["ENGINES", "make_engine", "DecisionEngine", "GenerateEngine", "NaiveEngine", "KVCacheEngine", "PackedEngine",
+           "SharedPrefixEngine"]

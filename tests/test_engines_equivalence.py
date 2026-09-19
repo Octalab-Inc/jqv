@@ -13,7 +13,11 @@ def _group(items, state):
     ("kvcache", {"batch_size": 2}),
     ("packed", {}),
     ("packed", {"use_prefix_cache": True}),
-    ("packed", {"use_prefix_cache": True, "max_tokens": 120}),  # forces chunking
+    ("packed", {"use_prefix_cache": True, "chunk_tokens": 120}),  # forces chunking
+    ("shared", {}),
+    ("shared", {"backend": "manual"}),
+    ("shared", {"use_prefix_cache": True}),
+    ("shared", {"use_prefix_cache": True, "chunk_tokens": 120}),  # forces chunking
 ])
 def test_engine_matches_naive(rt, bridge_items, engine, kwargs):
     state = bridge_items[0]["state"]
@@ -28,7 +32,7 @@ def test_engine_matches_naive(rt, bridge_items, engine, kwargs):
         assert max(abs(x - y) for x, y in zip(a.probabilities, b.probabilities)) < tol
 
 
-@pytest.mark.parametrize("engine", ["naive", "kvcache", "packed"])
+@pytest.mark.parametrize("engine", ["naive", "kvcache", "packed", "shared"])
 def test_rows_readout_matches_full(rt, bridge_items, engine):
     """B' (letters' LM-head rows only) must give the same choice logits as B (full-vocab projection)."""
     state = bridge_items[0]["state"]

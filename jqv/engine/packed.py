@@ -73,9 +73,13 @@ class PackedEngine(DecisionEngine):
     name = "packed"
 
     def __init__(self, rt, temperature=None, max_tokens: int = 16384, use_prefix_cache: bool = False,
-                 isolate: bool = True, readout: str = "full"):
+                 isolate: bool = True, readout: str = "full", chunk_tokens: int = 2048):
         super().__init__(rt, temperature, readout)
-        self.max_tokens = max_tokens
+        self.max_tokens = max_tokens  # single-forward threshold (prefix + all branches)
+        # Branch tokens per forward in the prefix-cache path. Smaller chunks waste less of the dense (Lc x (S+Lc))
+        # attention on the masked branch-branch block (waste = Lc / (S + Lc)); 2048 was 1.5x faster than 16384
+        # at S=8k, Q=1000 on MPS. The mask per chunk is (Lc x (S+Lc)), never (L x L).
+        self.chunk_tokens = chunk_tokens
         self.use_prefix_cache = use_prefix_cache
         self.isolate = isolate
 
@@ -104,7 +108,7 @@ class PackedEngine(DecisionEngine):
         outs, i = [], 0
         while i < len(suffixes):
             j, total = i, 0
-            while j < len(suffixes) and (j == i or total + len(suffixes[j]) <= self.max_tokens):
+            while j < len(suffixes) and (j == i or total + len(suffixes[j]) <= self.chunk_tokens):
                 total += len(suffixes[j])
                 j += 1
             chunk = suffixes[i:j]

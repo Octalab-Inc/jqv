@@ -12,6 +12,8 @@ import statistics
 import time
 from pathlib import Path
 
+import torch
+
 from _common import RESULTS, add_model_args, dump_json, load_rt, slug
 from jqv.engine import make_engine
 from jqv.types import Question
@@ -42,11 +44,17 @@ def make_questions(n: int) -> list[Question]:
             for i in range(n)]
 
 
-def time_call(rt, fn, repeat: int, label: str, long_run_threshold: float = 60.0) -> float:
+def driver_mem_gb(rt) -> float | None:
+    """MPS driver-allocated memory (a high-water proxy: the allocator keeps freed blocks)."""
+    return torch.mps.driver_allocated_memory() / 1e9 if rt.device.type == "mps" else None
+
+
+def time_call(rt, fn, repeat: int, label: str, long_run_threshold: float = 60.0) -> tuple[float, float | None]:
     t = time.perf_counter()
     fn()  # warmup
     rt.sync()
     warm = time.perf_counter() - t
+    mem = driver_mem_gb(rt)
     print(f"    {label} warmup {warm:6.1f}s", flush=True)
     if warm > long_run_threshold and repeat > 1:
         print(f"    {label} warmup exceeded {long_run_threshold:.0f}s -> timing 1 run instead of {repeat}", flush=True)
@@ -58,7 +66,7 @@ def time_call(rt, fn, repeat: int, label: str, long_run_threshold: float = 60.0)
         rt.sync()
         ts.append(time.perf_counter() - t)
         print(f"    {label} run {i + 1}/{repeat} {ts[-1]:6.1f}s", flush=True)
-    return statistics.median(ts)
+    return statistics.median(ts), mem
 
 
 def cost_tokens(engine: str, s_len: int, nq: int, q_tok: int) -> int:
@@ -133,12 +141,12 @@ def main():
             continue
         print(f"[{idx}/{len(plan)}] {label} S={s_len} Q={nq} ({cost_tokens(name, s_len, nq, q_tok)} tok/run)", flush=True)
         eng = make_engine(name, rt, readout=a.readout)
-        sec = time_call(rt, lambda: eng.decide(state, qs), a.repeat, label, a.long_run_threshold)
+        sec, mem = time_call(rt, lambda: eng.decide(state, qs), a.repeat, label, a.long_run_threshold)
         tps[name] = cost_tokens(name, s_len, nq, q_tok) / sec
         row = {"engine": label, "readout": "full" if name == "generate" else a.readout,
                "state_tokens": s_len, "questions": nq, "question_tokens": q_tok,
                "seconds": sec, "questions_per_sec": nq / sec,
-               "naive_equiv_tokens_per_sec": (nq * s_len + q_tok) / sec}
+               "naive_equiv_tokens_per_sec": (nq * s_len + q_tok) / sec, "driver_mem_gb": mem}
         rows.append(row)
         append_row(out_jsonl, row)  # saved immediately; a killed run loses at most the current condition
         done[(label, s_len, nq)] = row
@@ -150,7 +158,7 @@ def main():
     write_summary(list(done.values()), rt)
 
 
-ENGINE_ORDER = {"generate": 0, "naive": 1, "kvcache": 2, "packed": 3}
+ENGINE_ORDER = {"generate": 0, "naive": 1, "kvcache": 2, "packed": 3, "shared": 4}
 
 
 def write_summary(rows, rt) -> None:
@@ -163,10 +171,11 @@ def write_summary(rows, rt) -> None:
     out = RESULTS / f"bench_{slug(rt.model_id)}.json"
     out.write_text(json.dumps({"model": rt.model_id, "dtype": str(rt.dtype), "device": str(rt.device), "rows": rows},
                               indent=2, ensure_ascii=False))
-    md = ["| engine | state tok | Q | ms | q/s | speedup vs naive |", "|---|---:|---:|---:|---:|---:|"]
+    md = ["| engine | state tok | Q | ms | q/s | speedup vs naive | driver mem GB |", "|---|---:|---:|---:|---:|---:|---:|"]
     for r in rows:
         sp = f"{r['speedup_vs_naive']:.2f}x" if r["speedup_vs_naive"] else "-"
-        md.append(f"| {r['engine']} | {r['state_tokens']} | {r['questions']} | {r['seconds'] * 1000:.0f} | {r['questions_per_sec']:.1f} | {sp} |")
+        mem = f"{r['driver_mem_gb']:.1f}" if r.get("driver_mem_gb") else "-"
+        md.append(f"| {r['engine']} | {r['state_tokens']} | {r['questions']} | {r['seconds'] * 1000:.0f} | {r['questions_per_sec']:.1f} | {sp} | {mem} |")
     (RESULTS / f"bench_{slug(rt.model_id)}.md").write_text("\n".join(md) + "\n")
 
 

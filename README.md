@@ -22,6 +22,7 @@ POST /decision
 | `readout="rows"` | B' | 全語彙 projection を行わず、LM head の選択肢文字の行だけで logits を計算（全 engine で選択可） | 「vocab projection を捨てても同じ」の証明 |
 | `kvcache` | D1 | state を 1 回 prefill → KV cache を複製して質問をバッチ | 共有計算（HF cache 方式） |
 | `packed` | D2 | `[state \| q1 \| q2 \| …]` を 1 系列にし、block attention mask で各質問が state と自分だけを見る | Hume の観測と整合する block/tree attention 実装の一つ（reference 実装） |
+| `shared` | D3 | packed と同じ入力を、mask を使わないカスタム attention で計算。branch の query をまとめて shared prefix に attention（Hydragen 型分解）し、branch 内は小さな causal attention、log-sum-exp で合成 | block sparsity を演算量・メモリで実際に使う実装（L×L の mask を持たない） |
 
 `packed` の attention mask と position id:
 
@@ -211,14 +212,19 @@ block mask を入れた `packed` は兄弟質問の情報を一切見ない（Je
 Qwen3-1.7B / bf16 / Apple M5 Max。各条件 warmup 1 回 + 3 回計測の中央値（warmup が 60 秒を超えた条件は 1 回）。
 質問は 1 問あたり約 55 token。全 36 条件は `results/bench_qwen3-1.7b.md` にある。
 
-| state tok | Q | generate (A) | naive (B) | kvcache (D1) | packed (D2) | D2 speedup vs B |
-|---:|---:|---:|---:|---:|---:|---:|
-| 538  | 10  | 0.61 s | 0.53 s | 0.14 s | **0.12 s** | 4.5x |
-| 538  | 100 | 7.2 s  | 6.8 s  | **1.08 s** | 1.20 s | 5.7x |
-| 2038 | 10  | 3.1 s  | 3.3 s  | 0.44 s | **0.40 s** | 8.2x |
-| 2038 | 100 | 43 s   | 41 s   | 2.3 s  | **2.1 s**  | 20x |
-| 8038 | 10  | 23 s   | 23 s   | **2.1 s** | 2.4 s | 9.8x |
-| 8038 | 100 | 231 s  | 256 s  | 6.6 s  | **4.8 s**  | **53x** |
+| state tok | Q | generate (A) | naive (B) | kvcache (D1) | packed (D2) | shared (D3) | 最良 vs B |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 538  | 10  | 0.61 s | 0.53 s | 0.14 s | **0.12 s** | 0.13 s | 4.5x |
+| 538  | 100 | 7.2 s  | 6.8 s  | 1.08 s | 1.20 s | **0.95 s** | 7.2x |
+| 2038 | 10  | 3.1 s  | 3.3 s  | 0.44 s | **0.40 s** | 0.43 s | 8.2x |
+| 2038 | 100 | 43 s   | 41 s   | 2.3 s  | 2.1 s  | **1.8 s** | 23x |
+| 2038 | 1000 | -     | -      | -      | **9.9 s** | 13.3 s | - |
+| 8038 | 10  | 23 s   | 23 s   | 2.1 s | 2.4 s | **1.6 s** | 14x |
+| 8038 | 100 | 231 s  | 256 s  | 6.6 s  | 4.8 s  | **3.5 s** | **73x** |
+| 8038 | 1000 | -     | -      | 64 s   | **15.9 s** | 22.5 s | - |
+
+Q=1000 は naive / generate では 40 分以上かかるため未計測。packed の Q=1000 は prefix を KV cache に入れ、質問側を 2048 token ずつ
+pack する chunk 動作（`chunk_tokens=2048`。16384 では 36 s で、小さいタイルほど masked された branch-branch ブロックの無駄が減る）。
 
 Q=1 では 4 engine とも同等（共有するものがない。S=8038 で naive / packed とも 0.79 s）。
 
@@ -241,7 +247,42 @@ B' の価値は速度ではなく「語彙 projection なしでも決定が同�
    Hume の「state 長が支配し、質問の追加コストはほぼゼロ」という Jev の観測と同じ形になる。
 3. **packed は state が長いほど kvcache より有利。** kvcache は HF の cache を batch 行ごとに複製するため 8k state ではメモリ制約で batch が 8 に落ちる。
    packed は prefix K/V を 1 部しか持たない。短い state では mask 構築のオーバーヘッドで kvcache が僅かに速い。
+5. **shared (D3) は 1 回の forward に収まる範囲（prefix + 全質問 ≤ 16k token）で packed より 1.15〜1.5 倍速く、Q=1000 の chunk 領域では
+   packed の小タイルに負ける（下の「D3」節）。**
 4. 絶対値は Jev（30k token を約 160 ms）より 1〜2 桁遅い。これは 1.7B を MPS で動かしている環境差で、構造の比較には影響しない。
+
+## D3: mask を持たない shared-prefix attention（`jqv/engine/shared.py`）
+
+packed (D2) は `(1, 1, L, L)` の mask を SDPA に渡すため、attention は dense に計算される。D3 は同じ packed 入力
+（`[prefix | q1 | … | qQ]`、branch ごとに prefix 直後から再開する position id）を、Transformers 5.x の
+`AttentionInterface.register` で差し込んだカスタム attention で計算する。
+
+```
+prefix 行   : 通常の causal attention（fused SDPA、mask なし）
+branch 行   : (a) 全 branch の query をまとめて shared prefix の key に attention  … (Σq) × S の 1 ブロック、mask なし
+              (b) 各 branch が自分の key に causal attention  … branch を padding してバッチ化、(Q, qmax, qmax)
+              (a)(b) を log-sum-exp で合成（flash attention と同じ恒等式）
+```
+
+attention の演算量は O(L²) から O(S²/2 + (Σq)·S + Σq²) になり、最大の一時領域は (rows × S) のブロックで、L×L も
+Lc×(S+Lc) も作らない。fp32 で naive / packed と 1e-3 以内で一致し、isolation テストも通る。
+
+(a) を fused SDPA で計算するには合成に必要な分配関数 Z = Σ exp(s) が要るが、SDPA は正規化後の出力しか返さない。
+そこで **score 0 の zero key を 1 本足し、その value を probe（channel 0 だけ 1）にした 2 回目の SDPA** を呼ぶ。
+probe channel の出力は c = 1/(Z + P)（P は padding した zero key の本数）なので Z = 1/c − P が得られる
+（Qwen3 は q/k RMSNorm があり score は |s| < 50 程度で、c は fp32/bf16 とも underflow しない）。
+`backend="manual"`（matmul + softmax 統計を chunk で計算）も残してあり、MPS では memory-bound で fused より遅い（S=8k・Q=1000 で 57 s vs 49 s 時点）。
+
+**MPS での実測（上の表）**: 1 回の forward に収まる範囲では shared が packed より速い（S=8038・Q=100: 3.5 s vs 4.8 s、73x vs naive）。
+Q=1000 の chunk 領域では packed（2048 token タイル）の方が速い（15.9 s vs 22.5 s）。理由は次の 2 点。
+
+- MPS の SDPA は分配関数を出さないため、(a) に **2 回の全パス**が必要（probe 呼び出しは本体と同コスト）。
+  head dim を 129/136 にして probe channel を足す方法は MPS では 10 倍遅くなる（`head_dim=128` 以外は遅いカーネル）ので使えない。
+- packed の小タイルでは masked kernel の無駄が Lc/(S+Lc) ≈ 20% しかなく、mask 付きでも fused カーネル 1 回で済む。
+
+つまり MPS では「物理的に sparsity を使う」効果より「fused カーネルの回数」が効く。CUDA では FlexAttention の `BlockMask`
+（`backend="flex"`、本環境では未検証）で (a)(b) を 1 回の block-sparse カーネルにでき、この構造が本来の性能を出せるはず。
+Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk でも Lc×(S+Lc)）は成立せず、D3 型の分解が必須になる。
 
 ## 設計メモ
 
