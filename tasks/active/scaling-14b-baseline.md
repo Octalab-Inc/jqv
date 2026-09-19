@@ -5,6 +5,7 @@ priority: P2
 created_at: 2026-09-20T05:14:24+09:00
 depends_on:
   - calibration-training
+  - accuracy-fewshot-permavg
 ---
 
 # Goal
