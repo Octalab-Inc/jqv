@@ -4,3 +4,4 @@ __pycache__/
 results/*.npz
 results/*.log
 .pytest_cache/
+results/train/

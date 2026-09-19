@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from jqv.engine.base import DecisionEngine
 from jqv.engine.generate import GenerateEngine
+from jqv.engine.head import HeadEngine
 from jqv.engine.kvcache import KVCacheEngine
 from jqv.engine.naive import NaiveEngine
 from jqv.engine.packed import PackedEngine
@@ -13,6 +14,8 @@ ENGINES: dict[str, type[DecisionEngine]] = {
     "kvcache": KVCacheEngine,  # D1
     "packed": PackedEngine,  # D2
     "shared": SharedPrefixEngine,  # D3
+    "pointer": HeadEngine,  # C2 (needs head_dir)
+    "slot": HeadEngine,  # C1 (needs head_dir)
 }
 
 

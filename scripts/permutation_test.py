@@ -137,10 +137,11 @@ def main():
     ap.add_argument("--n", type=int, default=300, help="items per dataset (0 = all); bridge is always all")
     ap.add_argument("--engine", default="packed")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--head-dir", default=None, help="for --engine pointer|slot: results/train/<run>/best")
     add_model_args(ap)
     a = ap.parse_args()
     rt = load_rt(a)
-    engine = make_engine(a.engine, rt)
+    engine = make_engine(a.engine, rt, **({"head_dir": a.head_dir} if a.head_dir else {}))
     results = {}
     for name in a.datasets:
         data = load_named(name)

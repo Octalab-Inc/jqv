@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -56,11 +57,12 @@ def main():
     ap.add_argument("--n-val", type=int, default=400, help="items reserved for temperature fitting")
     ap.add_argument("--group-size", type=int, default=32)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--head-dir", default=None, help="for --engine pointer|slot: results/train/<run>/best")
     add_model_args(ap)
     a = ap.parse_args()
 
     rt = load_rt(a)
-    eng = make_engine(a.engine, rt)
+    eng = make_engine(a.engine, rt, **({"head_dir": a.head_dir} if a.head_dir else {}))
     items = load_named(a.dataset)
     val, test = sample_split(items, a.n or None, a.n_val, a.seed)
     print(f"{a.dataset}: {len(val)} val / {len(test)} test  engine={a.engine} model={rt.model_id} dtype={rt.dtype}")
@@ -77,7 +79,7 @@ def main():
         m["accuracy_note"] = "generate engine: probabilities are one-hot, calibration metrics not meaningful"
     print(m)
 
-    tag = f"{a.dataset}_{a.engine}_{slug(rt.model_id)}"
+    tag = f"{a.dataset}_{a.engine}_{slug(rt.model_id)}" + (f"_{Path(a.head_dir).parent.name}" if a.head_dir else "")
     np.savez(RESULTS / f"{tag}.npz", logits=z, labels=y, k=k, is_val=is_val)
     dump_json(m, RESULTS / f"{tag}.json")
 

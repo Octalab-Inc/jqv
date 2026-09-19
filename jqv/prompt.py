@@ -85,6 +85,24 @@ class PromptBuilder:
     def suffix_ids(self, question: str, choices: list[str], labels: list[str] | None = None) -> list[int]:
         return self.tok.encode(self.suffix_text(question, choices, labels), add_special_tokens=False)
 
+    def suffix_ids_with_spans(self, question: str, choices: list[str], labels: list[str] | None = None
+                              ) -> tuple[list[int], list[int]]:
+        """Suffix token ids (identical to `suffix_ids`) plus, for each option, the index of the token that
+        contains the last character of the option text. Uses the fast tokenizer's offset mapping, so merged
+        tokens such as "）\n\n" (CJK punctuation + newlines) are handled: that token still ends the option."""
+        labels = self.resolve_labels(len(choices), labels)
+        text = self.suffix_text(question, choices, labels)
+        enc = self.tok(text, add_special_tokens=False, return_offsets_mapping=True)
+        ids, offsets = enc["input_ids"], enc["offset_mapping"]
+        head = f"Question:\n{question}\n\nOptions:\n"
+        pos, ends = len(head), []
+        for i, c in enumerate(choices):
+            line = f"{labels[i]}. {c}"
+            char_end = pos + len(line) - 1  # index of the option's last character
+            ends.append(next(t for t, (a, b) in enumerate(offsets) if a <= char_end < b))
+            pos += len(line) + 1  # "\n"
+        return ids, ends
+
     def choice_token_ids(self, n: int, labels: list[str] | None = None) -> list[int]:
         """Readout token id for position i (= the letter printed at position i)."""
         return [self._choice_ids[LETTERS.index(l)] for l in self.resolve_labels(n, labels)]

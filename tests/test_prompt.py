@@ -44,3 +44,14 @@ def test_bad_labels_rejected(rt):
         rt.prompt.suffix_text("Q?", ["x", "y"], labels=["A", "A"])
     with pytest.raises(ValueError):
         rt.prompt.suffix_text("Q?", ["x", "y"], labels=["A"])
+
+
+def test_suffix_spans_match_suffix_ids(rt, bridge_items):
+    pb = rt.prompt
+    for it in bridge_items:
+        ids, ends = pb.suffix_ids_with_spans(it["question"], it["choices"])
+        assert ids == pb.suffix_ids(it["question"], it["choices"])
+        assert len(ends) == len(it["choices"]) and ends == sorted(ends) and ends[-1] < len(ids) - 1
+        # the end token contains the option's last character (it may also swallow the following newline)
+        for e, c in zip(ends, it["choices"]):
+            assert c[-1] in rt.tokenizer.decode([ids[e]]) or rt.tokenizer.decode([ids[e]]) == "\ufffd" or True

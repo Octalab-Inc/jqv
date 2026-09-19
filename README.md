@@ -284,6 +284,24 @@ Q=1000 の chunk 領域では packed（2048 token タイル）の方が速い（
 （`backend="flex"`、本環境では未検証）で (a)(b) を 1 回の block-sparse カーネルにでき、この構造が本来の性能を出せるはず。
 Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk でも Lc×(S+Lc)）は成立せず、D3 型の分解が必須になる。
 
+## C: 学習する decision head（`jqv/heads.py`, `jqv/train/`, `scripts/train_head.py`）
+
+語彙 readout（B）の代わりに、最終 hidden state から直接 decision logits を出す head を学習する。プロンプトは B と同一。
+
+| head | 式 | 特徴 |
+|---|---|---|
+| slot (C1) | `z = W h_d + b`（h_d は `Answer:` 位置の hidden state、行 = 選択肢スロット） | Hume の「slot head」。LM head の文字行で初期化すると step 0 は B' と同一 |
+| pointer (C2) | `z_i = (U h_d)·(V h_i)/√r + w·h_i`（h_i は選択肢 i のテキスト末尾の hidden state） | K 可変、順序に等変（`tests/test_heads.py`）、任意ラベル。Hume の「pointer scorer」候補 |
+
+- 学習データは MMLU `auxiliary_train`（99,842 問）。選択肢の並びを毎回 shuffle して位置 prior を学習させない。
+  検証は MMLU `validation` から 256 問。評価は他と同じ MMLU / JMMLU の test 800 問。
+- LLM は freeze し、LoRA（r=16, q/k/v/o_proj）を併用する設定と、LoRA なし（head だけ）の設定を比較する。
+- 学習は MPS 上で `python -u scripts/train_head.py`。10 step ごとに loss / step/s / ETA を表示、100 step ごとに
+  checkpoint（`results/train/<run>/last`）と検証（best は `best/`）、`--resume` で続きから再開できる。
+- 推論は `make_engine("pointer", rt, head_dir="results/train/<run>/best")`。head は学習時の model と prompt_hash を記録し、不一致なら拒否する。
+
+HEAD_RESULTS_PLACEHOLDER
+
 ## 設計メモ
 
 - **prefix / suffix の分割 tokenize**: state 側と質問側を別々に tokenize し、全 engine が同じ token id 列を使う。
