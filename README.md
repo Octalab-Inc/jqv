@@ -332,6 +332,50 @@ Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk で�
 5. 学習は `results/train/<run>/train_log.jsonl` に step ごとの loss と検証値、`best/`・`last/` に checkpoint が残る。
    pointer + LoRA の best は step 300（val NLL 1.145）で、その後は過学習気味。
 
+### 精度の読み方（`scripts/compare_runs.py`）
+
+精度は argmax の正解率で、温度では変わらない。Decision API では「確率が正直か」（ECE / NLL / Brier）と、
+「高確信の問題だけ自動処理したときの精度と処理率」で読む。test 800 問の 95% 信頼区間は ±3.4 ポイントなので、
+それ以下の差は同じ 800 問での対応比較（McNemar）で判断する。
+
+#### mmlu test n=800: accuracy ±95% CI, paired Δ vs B (vocab) [bootstrap 95% CI], McNemar p
+| run | accuracy | Δ vs baseline | discordant (win/lose) | McNemar p |
+|---|---:|---:|---:|---:|
+| B (vocab) | 0.554 ±0.034 | +0.000 [+0.000, +0.000] | 0/0 | 1.000 |
+| slot+LoRA | 0.575 ±0.034 | +0.021 [-0.003, +0.048] | 63/46 | 0.125 |
+| pointer+LoRA | 0.561 ±0.034 | +0.007 [-0.020, +0.037] | 77/71 | 0.681 |
+| pointer frozen | 0.471 ±0.035 | -0.083 [-0.114, -0.051] | 49/115 | 0.000 |
+
+#### selective accuracy with calibrated p (T from val): coverage / accuracy when p_max >= threshold
+| run | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 |
+|---|---|---|---|
+| B (vocab) | 67% を 0.64 | 19% を 0.87 | 0% |
+| slot+LoRA | 54% を 0.75 | 29% を 0.89 | 7% を 1.00 |
+| pointer+LoRA | 52% を 0.74 | 24% を 0.83 | 3% を 0.88 |
+| pointer frozen | 33% を 0.65 | 7% を 0.89 | 1% を 1.00 |
+
+#### jmmlu test n=800: accuracy ±95% CI, paired Δ vs B (vocab) [bootstrap 95% CI], McNemar p
+| run | accuracy | Δ vs baseline | discordant (win/lose) | McNemar p |
+|---|---:|---:|---:|---:|
+| B (vocab) | 0.466 ±0.035 | +0.000 [+0.000, +0.000] | 0/0 | 1.000 |
+| slot+LoRA | 0.505 ±0.035 | +0.039 [+0.011, +0.068] | 75/44 | 0.006 |
+| pointer+LoRA | 0.475 ±0.035 | +0.009 [-0.022, +0.040] | 86/79 | 0.641 |
+| pointer frozen | 0.395 ±0.034 | -0.071 [-0.105, -0.037] | 70/127 | 0.000 |
+
+#### selective accuracy with calibrated p (T from val): coverage / accuracy when p_max >= threshold
+| run | p ≥ 0.5 | p ≥ 0.7 | p ≥ 0.9 |
+|---|---|---|---|
+| B (vocab) | 52% を 0.59 | 5% を 0.87 | 0% |
+| slot+LoRA | 45% を 0.68 | 18% を 0.81 | 3% を 0.96 |
+| pointer+LoRA | 32% を 0.63 | 8% を 0.70 | 0% を 0.00 |
+| pointer frozen | 11% を 0.64 | 1% を 1.00 | 0% |
+
+- 「slot + LoRA が B より高い」は JMMLU で有意（p=0.006）、MMLU では有意でない（p=0.125）。「pointer + LoRA は B と同等」「凍結 head は劣る」は確実。
+- 全体精度が 2 ポイントしか違わなくても、校正後に p ≥ 0.7 で切ると slot + LoRA は B の 1.5 倍の問題（29% vs 19%）を同じ精度 0.89 で自動処理できる。
+  大量分類で不確かなものだけ人に回す用途では、この「選択的精度」が効く。
+- ここでの MMLU 0.55 は zero-shot・非 thinking・1,200 問サブセットの値で、公式評価（5-shot、全 14,042 問）とは比較できない。
+  bridge は 30 問（1 問 = 3.3 ポイント）なので動作確認以上の意味はない。
+
 ## 設計メモ
 
 - **prefix / suffix の分割 tokenize**: state 側と質問側を別々に tokenize し、全 engine が同じ token id 列を使う。

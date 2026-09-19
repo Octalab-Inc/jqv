@@ -31,12 +31,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--engine", default="packed")
     ap.add_argument("--model-slug", default="qwen3-1.7b")
+    ap.add_argument("--suffix", default="", help="cache tag suffix, e.g. _slot_lora for results/mmlu_slot_qwen3-1.7b_slot_lora.npz")
     ap.add_argument("--sources", nargs="+", default=["mmlu", "jmmlu"])
     ap.add_argument("--targets", nargs="+", default=["mmlu", "jmmlu", "bridge"])
     ap.add_argument("--diagrams", action="store_true", help="also write reliability diagrams for transfer cells")
     a = ap.parse_args()
 
-    data = {n: load(f"{n}_{a.engine}_{a.model_slug}") for n in set(a.sources) | set(a.targets)}
+    data = {n: load(f"{n}_{a.engine}_{a.model_slug}{a.suffix}") for n in set(a.sources) | set(a.targets)}
     # temperatures: per source (val rows), pooled over all sources, and per-target oracle (test rows)
     temps: dict[str, float] = {}
     for src in a.sources:
@@ -67,7 +68,7 @@ def main():
             rows.append(cell(name, T, tgt))
             if a.diagrams and name in a.sources and name != tgt:
                 z, y, v = data[tgt]
-                reliability_diagram((z[~v] / T).softmax(-1), y[~v], RESULTS / f"transfer_{name}_to_{tgt}_reliability.png",
+                reliability_diagram((z[~v] / T).softmax(-1), y[~v], RESULTS / f"transfer_{name}_to_{tgt}{a.suffix}_reliability.png",
                                     f"T({name})={T:.2f} applied to {tgt}")
 
     # print one table per target
@@ -78,7 +79,8 @@ def main():
         for r in rows:
             if r["target"] == tgt:
                 print(f"{r['source']:<16}{r['temperature']:>8.2f}{r['ece']:>8.3f}{r['nll']:>8.3f}{r['brier']:>8.3f}{r['mean_confidence']:>11.3f}")
-    dump_json({"temperatures": temps, "rows": rows}, RESULTS / f"transfer_{a.model_slug}.json")
+    tag = f"transfer_{a.model_slug}" + (f"_{a.engine}{a.suffix}" if a.suffix or a.engine != "packed" else "")
+    dump_json({"temperatures": temps, "rows": rows}, RESULTS / f"{tag}.json")
 
 
 if __name__ == "__main__":

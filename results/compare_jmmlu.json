@@ -1,0 +1,119 @@
+{
+  "dataset": "jmmlu",
+  "n": 800,
+  "baseline": "B (vocab)",
+  "rows": [
+    {
+      "run": "B (vocab)",
+      "accuracy": 0.46625,
+      "ci95": 0.03456920915894663,
+      "delta": 0.0,
+      "delta_ci": [
+        0.0,
+        0.0
+      ],
+      "win": 0,
+      "lose": 0,
+      "mcnemar_p": 1.0,
+      "T": 12.843724727032852,
+      "selective": {
+        "0.5": {
+          "coverage": 0.5175,
+          "accuracy": 0.5869565217391305
+        },
+        "0.7": {
+          "coverage": 0.04875,
+          "accuracy": 0.8717948717948718
+        },
+        "0.9": {
+          "coverage": 0.0,
+          "accuracy": null
+        }
+      }
+    },
+    {
+      "run": "slot+LoRA",
+      "accuracy": 0.505,
+      "ci95": 0.034646499823214466,
+      "delta": 0.03875,
+      "delta_ci": [
+        0.01125,
+        0.0675
+      ],
+      "win": 75,
+      "lose": 44,
+      "mcnemar_p": 0.0057268619068842576,
+      "T": 1.8882934449954643,
+      "selective": {
+        "0.5": {
+          "coverage": 0.4475,
+          "accuracy": 0.6759776536312849
+        },
+        "0.7": {
+          "coverage": 0.18,
+          "accuracy": 0.8055555555555556
+        },
+        "0.9": {
+          "coverage": 0.02875,
+          "accuracy": 0.9565217391304348
+        }
+      }
+    },
+    {
+      "run": "pointer+LoRA",
+      "accuracy": 0.475,
+      "ci95": 0.03460489488497256,
+      "delta": 0.00875,
+      "delta_ci": [
+        -0.0225,
+        0.04
+      ],
+      "win": 86,
+      "lose": 79,
+      "mcnemar_p": 0.6405622342031336,
+      "T": 2.0354107617927344,
+      "selective": {
+        "0.5": {
+          "coverage": 0.32125,
+          "accuracy": 0.6264591439688716
+        },
+        "0.7": {
+          "coverage": 0.075,
+          "accuracy": 0.7
+        },
+        "0.9": {
+          "coverage": 0.00375,
+          "accuracy": 0.0
+        }
+      }
+    },
+    {
+      "run": "pointer frozen",
+      "accuracy": 0.395,
+      "ci95": 0.03387562471748676,
+      "delta": -0.07125,
+      "delta_ci": [
+        -0.105,
+        -0.0375
+      ],
+      "win": 70,
+      "lose": 127,
+      "mcnemar_p": 5.9249643812841595e-05,
+      "T": 5.7797009940866495,
+      "selective": {
+        "0.5": {
+          "coverage": 0.1125,
+          "accuracy": 0.6444444444444445
+        },
+        "0.7": {
+          "coverage": 0.0125,
+          "accuracy": 1.0
+        },
+        "0.9": {
+          "coverage": 0.0,
+          "accuracy": null
+        }
+      }
+    }
+  ]
+}
