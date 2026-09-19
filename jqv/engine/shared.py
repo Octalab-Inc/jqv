@@ -269,8 +269,8 @@ class SharedPrefixEngine(DecisionEngine):
     name = "shared"
 
     def __init__(self, rt, temperature=None, max_tokens: int = 16384, use_prefix_cache: bool = False,
-                 readout: str = "full", backend: str = "fused", chunk_tokens: int | None = None):
-        super().__init__(rt, temperature, readout)
+                 readout: str = "full", backend: str = "fused", chunk_tokens: int | None = None, perm_avg: bool = False):
+        super().__init__(rt, temperature, readout, perm_avg)
         self.max_tokens = max_tokens  # single-forward threshold (prefix + all branches)
         self.chunk_tokens = chunk_tokens or max_tokens  # branch tokens per forward in the prefix-cache path
         self.use_prefix_cache = use_prefix_cache

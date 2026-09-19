@@ -16,13 +16,14 @@ from jqv.types import Decision, Question
 class GenerateEngine(DecisionEngine):
     name = "generate"
 
-    def __init__(self, rt, temperature=None, batch_size: int = 8, max_new_tokens: int = 4, readout: str = "full"):
-        super().__init__(rt, temperature)  # readout is irrelevant: generation needs the full vocabulary
+    def __init__(self, rt, temperature=None, batch_size: int = 8, max_new_tokens: int = 4, readout: str = "full",
+                 perm_avg: bool = False):
+        super().__init__(rt, temperature, perm_avg=perm_avg)  # readout is irrelevant: generation needs the full vocabulary
         self.batch_size = batch_size
         self.max_new_tokens = max_new_tokens
 
     @torch.inference_mode()
-    def decide(self, state: str, questions: list[Question]) -> list[Decision]:
+    def _decide_plain(self, state: str, questions: list[Question]) -> list[Decision]:
         prefix, suffixes, _ = self.encode(state, questions)
         tok = self.rt.tokenizer
         pad_id = tok.pad_token_id or 0

@@ -11,8 +11,8 @@ from jqv.engine.base import DecisionEngine
 class NaiveEngine(DecisionEngine):
     name = "naive"
 
-    def __init__(self, rt, temperature=None, batch_size: int = 8, readout: str = "full"):
-        super().__init__(rt, temperature, readout)
+    def __init__(self, rt, temperature=None, batch_size: int = 8, readout: str = "full", perm_avg: bool = False):
+        super().__init__(rt, temperature, readout, perm_avg)
         self.batch_size = batch_size
 
     def readout_hidden(self, prefix, suffixes):

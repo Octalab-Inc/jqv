@@ -36,6 +36,7 @@ class Decision(BaseModel):
     entropy_concentration: float | None = None
     choice_mass: float | None = None
     parsed: bool | None = None  # generate engine only: whether a letter could be parsed
+    perm_avg_k: int | None = None  # number of option-order rotations averaged (perm_avg engines)
 
     @property
     def argmax(self) -> int:

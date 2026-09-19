@@ -58,14 +58,27 @@ def main():
     ap.add_argument("--group-size", type=int, default=32)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--head-dir", default=None, help="for --engine pointer|slot: results/train/<run>/best")
+    ap.add_argument("--shots", type=int, default=0, help="k exemplars in the shared state (MMLU dev)")
+    ap.add_argument("--shots-mode", choices=["subject", "fixed"], default="subject",
+                    help="subject: same-subject exemplars (one state per subject); fixed: one cross-subject state for all")
+    ap.add_argument("--perm-avg", action="store_true", help="average over all cyclic rotations of the option order")
     add_model_args(ap)
     a = ap.parse_args()
 
     rt = load_rt(a)
-    eng = make_engine(a.engine, rt, **({"head_dir": a.head_dir} if a.head_dir else {}))
+    kw = {"head_dir": a.head_dir} if a.head_dir else {}
+    eng = make_engine(a.engine, rt, perm_avg=a.perm_avg, **kw)
     items = load_named(a.dataset)
     val, test = sample_split(items, a.n or None, a.n_val, a.seed)
-    print(f"{a.dataset}: {len(val)} val / {len(test)} test  engine={a.engine} model={rt.model_id} dtype={rt.dtype}")
+    if a.shots:
+        from jqv.fewshot import fewshot_state, fixed_state
+
+        for it in val + test:
+            if it.get("state"):  # datasets with their own state (bridge): few-shot not applicable
+                continue
+            it["state"] = fixed_state(a.shots) if a.shots_mode == "fixed" else fewshot_state(it.get("subject"), a.shots)
+    print(f"{a.dataset}: {len(val)} val / {len(test)} test  engine={a.engine} model={rt.model_id} dtype={rt.dtype} "
+          f"shots={a.shots}{'/' + a.shots_mode if a.shots else ''} perm_avg={a.perm_avg}")
 
     z, y, k, secs = run(eng, val + test, a.group_size)
     is_val = np.zeros(len(y), dtype=bool)
@@ -74,12 +87,14 @@ def main():
     m = summary(probs[~is_val], y[~is_val])
     m.update(engine=a.engine, model=rt.model_id, dtype=str(rt.dtype), dataset=a.dataset, seconds=secs,
              questions_per_sec=len(y) / secs, prompt_hash=rt.prompt.hash, n_val=len(val),
-             choice_counts=sorted({int(c) for c in k}))
+             choice_counts=sorted({int(c) for c in k}), shots=a.shots, shots_mode=a.shots_mode if a.shots else None,
+             perm_avg=a.perm_avg)
     if a.engine == "generate":
         m["accuracy_note"] = "generate engine: probabilities are one-hot, calibration metrics not meaningful"
     print(m)
 
-    tag = f"{a.dataset}_{a.engine}_{slug(rt.model_id)}" + (f"_{Path(a.head_dir).parent.name}" if a.head_dir else "")
+    tag = (f"{a.dataset}_{a.engine}_{slug(rt.model_id)}" + (f"_{Path(a.head_dir).parent.name}" if a.head_dir else "")
+           + (f"_shots{a.shots}{'fixed' if a.shots_mode == 'fixed' else ''}" if a.shots else "") + ("_permavg" if a.perm_avg else ""))
     np.savez(RESULTS / f"{tag}.npz", logits=z, labels=y, k=k, is_val=is_val)
     dump_json(m, RESULTS / f"{tag}.json")
 

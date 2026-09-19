@@ -92,6 +92,7 @@ def main():
     ap.add_argument("--engines", nargs="+", default=["generate", "naive", "kvcache", "packed"])
     ap.add_argument("--repeat", type=int, default=3)
     ap.add_argument("--max-generate-questions", type=int, default=100)
+    ap.add_argument("--perm-avg", action="store_true", help="average over option rotations (K x questions); rows labelled engine:permavg")
     ap.add_argument("--readout", default="full", choices=["full", "rows"],
                     help="full = B (full LM head), rows = B' (letters' rows only); rows are labelled engine:rows")
     ap.add_argument("--out", default=None,
@@ -114,6 +115,8 @@ def main():
                 if name == "generate" and nq > a.max_generate_questions:
                     continue
                 label = name if (a.readout == "full" or name == "generate") else f"{name}:{a.readout}"
+                if a.perm_avg:
+                    label += ":permavg"
                 plan.append((state, qs, s_len, nq, q_tok, label))
     out_jsonl = Path(a.out) if a.out else RESULTS / f"bench_{slug(rt.model_id)}.jsonl"
     done: dict[tuple, dict] = {}
@@ -140,7 +143,7 @@ def main():
             print(f"[{idx}/{len(plan)}] {label} S={s_len} Q={nq} already done ({row['seconds'] * 1000:.0f} ms), skipped", flush=True)
             continue
         print(f"[{idx}/{len(plan)}] {label} S={s_len} Q={nq} ({cost_tokens(name, s_len, nq, q_tok)} tok/run)", flush=True)
-        eng = make_engine(name, rt, readout=a.readout)
+        eng = make_engine(name, rt, readout=a.readout, perm_avg=a.perm_avg)
         sec, mem = time_call(rt, lambda: eng.decide(state, qs), a.repeat, label, a.long_run_threshold)
         tps[name] = cost_tokens(name, s_len, nq, q_tok) / sec
         row = {"engine": label, "readout": "full" if name == "generate" else a.readout,

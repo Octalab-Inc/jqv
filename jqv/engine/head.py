@@ -23,8 +23,9 @@ from jqv.types import Decision, Question
 class HeadEngine(DecisionEngine):
     name = "head"
 
-    def __init__(self, rt, temperature=None, head_dir: str | Path | None = None, batch_size: int = 16, readout: str = "full"):
-        super().__init__(rt, temperature, readout)
+    def __init__(self, rt, temperature=None, head_dir: str | Path | None = None, batch_size: int = 16, readout: str = "full",
+                 perm_avg: bool = False):
+        super().__init__(rt, temperature, readout, perm_avg)
         if head_dir is None:
             raise ValueError("head_dir is required (results/train/<run>/best or /last)")
         head_dir = Path(head_dir)
@@ -46,7 +47,7 @@ class HeadEngine(DecisionEngine):
             raise RuntimeError(f"runtime already carries adapter {rt.model._jqv_adapter}; create a new Runtime")
 
     @torch.inference_mode()
-    def decide(self, state: str, questions: list[Question]) -> list[Decision]:
+    def _decide_plain(self, state: str, questions: list[Question]) -> list[Decision]:
         prefix = self.rt.prompt.prefix_ids(state)
         exs = []
         for q in questions:

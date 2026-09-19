@@ -19,8 +19,8 @@ class KVCacheEngine(DecisionEngine):
     name = "kvcache"
 
     def __init__(self, rt, temperature=None, batch_size: int = 64, cache_budget_bytes: int = 8 << 30,
-                 readout: str = "full"):
-        super().__init__(rt, temperature, readout)
+                 readout: str = "full", perm_avg: bool = False):
+        super().__init__(rt, temperature, readout, perm_avg)
         self.batch_size = batch_size
         self.cache_budget_bytes = cache_budget_bytes
 
