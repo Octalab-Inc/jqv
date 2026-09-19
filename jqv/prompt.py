@@ -55,10 +55,21 @@ class PromptBuilder:
             )
         return doc
 
-    def suffix_text(self, question: str, choices: list[str]) -> str:
+    @staticmethod
+    def resolve_labels(n: int, labels: list[str] | None) -> list[str]:
+        """Letter printed in front of position i. Default A, B, C, ...; custom labels let experiments
+        permute which letter each position carries (letter-token prior vs. position/order effects)."""
+        if labels is None:
+            return list(LETTERS[:n])
+        if len(labels) != n or len(set(labels)) != n or any(l not in LETTERS for l in labels):
+            raise ValueError(f"labels must be {n} distinct letters from A-Z, got {labels}")
+        return list(labels)
+
+    def suffix_text(self, question: str, choices: list[str], labels: list[str] | None = None) -> str:
         if not 2 <= len(choices) <= len(LETTERS):
             raise ValueError(f"choices must have 2..{len(LETTERS)} entries, got {len(choices)}")
-        opts = "\n".join(f"{LETTERS[i]}. {c}" for i, c in enumerate(choices))
+        labels = self.resolve_labels(len(choices), labels)
+        opts = "\n".join(f"{labels[i]}. {c}" for i, c in enumerate(choices))
         body = f"Question:\n{question}\n\nOptions:\n{opts}\n\nAnswer with the letter only."
         if self.style.chat:
             return (
@@ -71,11 +82,12 @@ class PromptBuilder:
     def prefix_ids(self, state: str) -> list[int]:
         return self.tok.encode(self.prefix_text(state), add_special_tokens=False)
 
-    def suffix_ids(self, question: str, choices: list[str]) -> list[int]:
-        return self.tok.encode(self.suffix_text(question, choices), add_special_tokens=False)
+    def suffix_ids(self, question: str, choices: list[str], labels: list[str] | None = None) -> list[int]:
+        return self.tok.encode(self.suffix_text(question, choices, labels), add_special_tokens=False)
 
-    def choice_token_ids(self, n: int) -> list[int]:
-        return self._choice_ids[:n]
+    def choice_token_ids(self, n: int, labels: list[str] | None = None) -> list[int]:
+        """Readout token id for position i (= the letter printed at position i)."""
+        return [self._choice_ids[LETTERS.index(l)] for l in self.resolve_labels(n, labels)]
 
     def _resolve_choice_ids(self) -> list[int]:
         ids = []

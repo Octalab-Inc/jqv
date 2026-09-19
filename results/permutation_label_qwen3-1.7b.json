@@ -1,0 +1,52 @@
+{
+  "mmlu": {
+    "mode": "label",
+    "n_items": 300,
+    "slot_prior": {
+      "A": 0.30904637790223843,
+      "B": 0.2821877622051899,
+      "C": 0.22138003909726278,
+      "D": 0.18738582457778813
+    },
+    "mean_abs_diff_p_correct": 0.1739482448675041,
+    "argmax_consistent_fraction": 0.5433333333333333,
+    "accuracy_by_variant": {
+      "0": 0.56,
+      "1": 0.5333333333333333,
+      "2": 0.5433333333333333,
+      "3": 0.55
+    },
+    "accuracy_min_max": [
+      0.5333333333333333,
+      0.56
+    ],
+    "dataset": "mmlu",
+    "engine": "packed",
+    "model": "Qwen/Qwen3-1.7B"
+  },
+  "bridge": {
+    "mode": "label",
+    "n_items": 30,
+    "slot_prior": {
+      "A": 0.29668215411368015,
+      "B": 0.3051486438749057,
+      "C": 0.24138630154311516,
+      "D": 0.23822405131459728
+    },
+    "mean_abs_diff_p_correct": 0.03912707015293878,
+    "argmax_consistent_fraction": 0.9333333333333333,
+    "accuracy_by_variant": {
+      "0": 0.9333333333333333,
+      "1": 0.9,
+      "2": 0.9545454545454546,
+      "3": 0.9523809523809523
+    },
+    "accuracy_min_max": [
+      0.9,
+      0.9545454545454546
+    ],
+    "dataset": "bridge",
+    "engine": "packed",
+    "model": "Qwen/Qwen3-1.7B"
+  }
+}

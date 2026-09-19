@@ -99,6 +99,8 @@ uv run scripts/isolation_test.py                                              # 
   T は [0.05, 100] の対数格子 + 黄金分割で NLL 最小化する（少数・ほぼ分離可能なデータで発散しないため）。
 - `transfer_temperature.py` は npz キャッシュだけを使い、source × target の全組合せで T を転移させた ECE / NLL / Brier を出す。
 - `isolation_test.py` は `packed_causal`（block mask を使わない素朴な連結）を負対照として、兄弟質問の情報が漏れないことを示す。
+- `permutation_test.py` は `--mode label`（文字だけ巡回）、`--mode order`（並びだけ巡回）、`--mode fifth`（無関係な 5 番目を追加）で
+  確率の変動を測る。`Question.labels` で位置ごとの文字を指定できる（実験用）。
 - `bench.py` は各条件の完了ごとに結果を `results/bench_<model>.jsonl` へ追記し、残り時間の推定を表示する。中断後に同じコマンドで再開できる。
 
 結果は `results/` に JSON / PNG / Markdown で出る。
@@ -145,6 +147,22 @@ in-distribution の対角ではなく非対角がそれとの比較対象にな�
 - つまり Qwen3-1.7B の 1-token logit の歪みは「一定の scale」ではなく、closed-book の知識問題では約 12 倍、state から読み取れる問題では約 3 倍と
   タスクの性質で変わる。post-hoc の scalar 1 個では汎用 Decision API の校正にはならず、ここが Jev（RLCD で学習した分布）との差になる。
   bridge は 30 問の合成データなので数値は目安。転移の判定基準は「非対角 ECE が対角 + 0.02 以内」とした。
+
+### 文字ラベルの prior（`scripts/permutation_test.py --mode label`, `results/permutation_label_qwen3-1.7b.json`）
+
+選択肢の位置と内容を固定したまま、前に付ける文字だけを巡回シフトする（`A. x / B. y / C. z` → `B. x / C. y / A. z` → …）。
+意味的選択肢に戻して集計するので、残る差は「どの文字 token を読むか」だけ。生の確率（T=1）で測定。
+
+| dataset | 文字ごとの平均確率 A / B / C / D（一様なら 0.25） | p(correct) のシフト間平均絶対差 | argmax が全シフトで一致 | accuracy の範囲 |
+|---|---|---:|---:|---|
+| MMLU (n=300) | 0.31 / 0.28 / 0.22 / 0.19 | 0.174 | 54% | 0.533〜0.560 |
+| bridge (n=30) | 0.30 / 0.31 / 0.24 / 0.24 | 0.039 | 93% | 0.900〜0.955 |
+
+- **文字 token の prior は無視できない。** MMLU では A/B が C/D より系統的に高く（0.31 vs 0.19）、文字を付け替えるだけで 46% の問題で
+  argmax が変わる。accuracy の平均はほぼ変わらない（0.53〜0.56）ので、prior は「迷っている問題」を A/B 側に倒している。
+- state に答えが書いてある bridge では効果が小さい（一致 93%）。証拠が強いと prior は上書きされる。
+- 注意: 文字を巡回させると `B. C. D. A.` のように文字が非順序で並ぶ不自然なプロンプトになる。この設計は「文字の効果」だけを取り出す
+  代わりに、その不自然さも含んで測っている。並び順そのものの効果は次の order 実験で測る。
 
 ### Isolation（Hume の secret-code 実験の再現）
 

@@ -1,6 +1,6 @@
 ---
 title: 文字ラベル (A/B/C/D) token の prior を位置固定の入れ替えで定量化する
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-20T01:50:43+09:00
 depends_on: []
@@ -44,3 +44,27 @@ uv run pytest
 uv run scripts/permutation_test.py --mode label --n 300
 cat results/permutation_label_qwen3-1.7b.json
 ```
+
+# Result
+
+## Changed
+
+- `jqv/prompt.py`: `resolve_labels`、`suffix_text/suffix_ids/choice_token_ids` に `labels`（位置ごとの文字）を追加
+- `jqv/types.py`: `Question.labels`（検証付き）、`jqv/engine/base.py` と `generate.py` が labels を使う
+- `scripts/permutation_test.py`: `--mode label|order|fifth`（order / fifth は次タスクで計測）。state ごとにまとめて packed で推論
+- `tests/test_prompt.py`: labels の描画と choice_ids の対応、不正 labels の拒否
+- `README.md`: 「文字ラベルの prior」節
+- `results/permutation_label_qwen3-1.7b.json`
+
+## Verified
+
+- `uv run pytest`: 24 passed
+- `uv run scripts/permutation_test.py --mode label --n 300`: MMLU 300 × 4 シフト、bridge 30 × K シフト
+
+## Deviations
+
+- なし
+
+## Remaining
+
+- 文字を巡回させると非順序の並び（B. C. D. A.）になる不自然さが結果に含まれる。順序を保ったまま文字集合を変える設計（例: A-D → E-H）は別実験

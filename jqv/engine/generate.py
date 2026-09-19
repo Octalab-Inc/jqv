@@ -47,8 +47,9 @@ class GenerateEngine(DecisionEngine):
             texts = tok.batch_decode(gen[:, t:], skip_special_tokens=True)
             for q, text in zip(qs, texts):
                 k = len(q.choices)
+                labels = self.rt.prompt.resolve_labels(k, q.labels)
                 m = re.search(r"[A-Z]", text)
-                idx = LETTERS.index(m.group(0)) if m else -1
+                idx = labels.index(m.group(0)) if (m and m.group(0) in labels) else -1
                 if 0 <= idx < k:
                     p = [0.0] * k
                     p[idx] = 1.0

@@ -20,8 +20,8 @@ class DecisionEngine:
 
     def encode(self, state: str, questions: list[Question]) -> tuple[list[int], list[list[int]], list[list[int]]]:
         prefix = self.rt.prompt.prefix_ids(state)
-        suffixes = [self.rt.prompt.suffix_ids(q.question, q.choices) for q in questions]
-        choice_ids = [self.rt.prompt.choice_token_ids(len(q.choices)) for q in questions]
+        suffixes = [self.rt.prompt.suffix_ids(q.question, q.choices, q.labels) for q in questions]
+        choice_ids = [self.rt.prompt.choice_token_ids(len(q.choices), q.labels) for q in questions]
         return prefix, suffixes, choice_ids
 
     def readout_hidden(self, prefix: list[int], suffixes: list[list[int]]) -> torch.Tensor:

@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class Question(BaseModel):
     question: str
     choices: list[str] = Field(min_length=2, max_length=26)
+    labels: list[str] | None = None  # letter shown at each position; default A, B, C, ... (experiments only)
+
+    @model_validator(mode="after")
+    def _check_labels(self):
+        if self.labels is not None:
+            if len(self.labels) != len(self.choices) or len(set(self.labels)) != len(self.labels):
+                raise ValueError("labels must be distinct and match the number of choices")
+            if any(len(l) != 1 or not ("A" <= l <= "Z") for l in self.labels):
+                raise ValueError("labels must be single uppercase letters")
+        return self
 
 
 class Decision(BaseModel):

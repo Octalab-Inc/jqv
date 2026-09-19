@@ -26,3 +26,21 @@ def test_chat_prompt_matches_official_template(rt):
         tokenize=False, add_generation_prompt=True, enable_thinking=False,
     )
     assert text == official + pb.style.answer_cue
+
+
+def test_custom_labels_change_letters_not_positions(rt):
+    pb = rt.prompt
+    text = pb.suffix_text("Q?", ["x", "y", "z"], labels=["C", "A", "B"])
+    assert "C. x\nA. y\nB. z" in text
+    ids = pb.choice_token_ids(3, ["C", "A", "B"])
+    assert [rt.tokenizer.decode([t]) for t in ids] == [" C", " A", " B"]
+    assert pb.choice_token_ids(3) == [pb.choice_token_ids(3, ["C", "A", "B"])[i] for i in (1, 2, 0)]
+
+
+def test_bad_labels_rejected(rt):
+    import pytest
+
+    with pytest.raises(ValueError):
+        rt.prompt.suffix_text("Q?", ["x", "y"], labels=["A", "A"])
+    with pytest.raises(ValueError):
+        rt.prompt.suffix_text("Q?", ["x", "y"], labels=["A"])
