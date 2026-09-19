@@ -1,6 +1,6 @@
 ---
 title: temperature がデータセット・言語・ドメイン間でどこまで転移するかを示す
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-20T01:50:42+09:00
 depends_on: []
@@ -41,3 +41,25 @@ depends_on: []
 uv run scripts/transfer_temperature.py
 cat results/transfer_qwen3-1.7b.json
 ```
+
+# Result
+
+## Changed
+
+- `scripts/transfer_temperature.py`: source（mmlu, jmmlu, mmlu+jmmlu）× target（mmlu, jmmlu, bridge）の転移表、T=1 行、各 target の oracle 行、`--diagrams` で転移セルの reliability diagram
+- `jqv/calibration.py`: `fit` を LBFGS から有界の対数格子 + 黄金分割探索に変更（bridge 30 問の oracle fit で LBFGS が発散したため）。mmlu / jmmlu の T は 11.94→11.96、12.82→12.84 とほぼ不変
+- `README.md`: 「temperature の転移」節と校正表の数値更新（ECE after 0.077→0.080、0.064→0.066）
+- `results/transfer_qwen3-1.7b.json`, `results/transfer_*_reliability.png`
+
+## Verified
+
+- `uv run scripts/transfer_temperature.py --diagrams` が表と JSON を生成
+- `uv run pytest tests/test_calibration.py`: 5 passed（fit の回復テスト含む）
+
+## Deviations
+
+- fit の実装を変更した（Scope 外だが、本タスクの oracle 行を出すために必要）。結果は旧実装と 0.02 以内で一致
+
+## Remaining
+
+- bridge は n=30 の合成データ。実データでの再確認は別タスク

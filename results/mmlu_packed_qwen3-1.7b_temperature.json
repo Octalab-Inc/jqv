@@ -1,5 +1,5 @@
 {
-  "temperature": 11.937074661254883,
+  "temperature": 11.955220698691763,
   "model": "Qwen/Qwen3-1.7B",
   "engine": "packed",
   "dataset": "mmlu",
@@ -9,5 +9,5 @@
   "choice_counts": [
     4
   ],
-  "fitted_at": "2026-09-20T02:03:23+09:00"
+  "fitted_at": "2026-09-20T02:08:31+09:00"
 }

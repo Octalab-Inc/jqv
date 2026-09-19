@@ -96,6 +96,8 @@ uv run scripts/isolation_test.py                                              # 
 
 - `eval.py` は同じ state を持つ質問をまとめて 1 回の `decide()` に渡す（MMLU/JMMLU は state 空で N 問を一括）。
 - `fit_temperature.py` は val 分割で temperature scaling を学習し、test 分割で ECE / Brier / NLL の前後を出す。
+  T は [0.05, 100] の対数格子 + 黄金分割で NLL 最小化する（少数・ほぼ分離可能なデータで発散しないため）。
+- `transfer_temperature.py` は npz キャッシュだけを使い、source × target の全組合せで T を転移させた ECE / NLL / Brier を出す。
 - `isolation_test.py` は `packed_causal`（block mask を使わない素朴な連結）を負対照として、兄弟質問の情報が漏れないことを示す。
 - `bench.py` は各条件の完了ごとに結果を `results/bench_<model>.jsonl` へ追記し、残り時間の推定を表示する。中断後に同じコマンドで再開できる。
 
@@ -116,12 +118,33 @@ uv run scripts/isolation_test.py                                              # 
 
 | dataset | accuracy | ECE before | ECE after | Brier before | Brier after | NLL before | NLL after | T |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| MMLU (en)  | 0.554 | 0.413 | **0.077** | 0.852 | 0.576 | 5.79 | 1.08 | 11.9 |
-| JMMLU (ja) | 0.466 | 0.485 | **0.064** | 0.983 | 0.639 | 6.13 | 1.19 | 12.8 |
+| MMLU (en)  | 0.554 | 0.413 | **0.080** | 0.852 | 0.576 | 5.79 | 1.08 | 12.0 |
+| JMMLU (ja) | 0.466 | 0.485 | **0.066** | 0.983 | 0.639 | 6.13 | 1.19 | 12.8 |
 | bridge_synth (30問, 校正なし) | 0.933 | 0.051 | - | 0.079 | - | 0.10 | - | - |
 
 生の 1-token readout は平均 confidence 0.96 と極端に過信しているが、スカラー 1 個の temperature で ECE は 0.06〜0.08 まで下がる
 （Hume が Jev で測った ECE 0.031 にはまだ届かない）。reliability diagram は `results/*_reliability_{before,after}.png`。
+
+### temperature の転移（`scripts/transfer_temperature.py`, `results/transfer_qwen3-1.7b.json`）
+
+source の val で学習した T を、別の target の test にそのまま適用した。Jev の ECE 0.031 は zero-shot 値なので、
+in-distribution の対角ではなく非対角がそれとの比較対象になる。
+
+| T の学習元 → 適用先 | T | MMLU test (n=800) ECE | JMMLU test (n=800) ECE | bridge (n=30) ECE |
+|---|---:|---:|---:|---:|
+| なし (T=1) | 1.00 | 0.413 | 0.485 | **0.051** |
+| MMLU val | 11.96 | **0.080** | 0.082 | 0.237 |
+| JMMLU val | 12.84 | 0.081 | **0.066** | 0.266 |
+| MMLU+JMMLU val | 12.34 | 0.085 | 0.072 | 0.253 |
+| oracle（各 target の test 自身で学習） | 11.5 / 12.9 / 2.94 | 0.092 | 0.070 | 0.047 |
+
+- **言語をまたいだ転移は成立する。** MMLU で学習した T=12.0 を JMMLU に当てても ECE 0.082（in-distribution 0.066）、逆向きも 0.081（0.080）。
+  英語と日本語の知識問題で、生 logit の scale の歪みはほぼ同じ（T ≈ 12）。
+- **タスク種別をまたいだ転移は成立しない。** bridge（state に答えが書いてある読解型、正答率 0.93）では生の確率が既にほぼ校正されており
+  （ECE 0.051、oracle T=2.9）、T=12 を当てると平均 confidence が 0.98 → 0.73 に落ちて過小確信になり ECE は 0.24 に悪化する。
+- つまり Qwen3-1.7B の 1-token logit の歪みは「一定の scale」ではなく、closed-book の知識問題では約 12 倍、state から読み取れる問題では約 3 倍と
+  タスクの性質で変わる。post-hoc の scalar 1 個では汎用 Decision API の校正にはならず、ここが Jev（RLCD で学習した分布）との差になる。
+  bridge は 30 問の合成データなので数値は目安。転移の判定基準は「非対角 ECE が対角 + 0.02 以内」とした。
 
 ### Isolation（Hume の secret-code 実験の再現）
 

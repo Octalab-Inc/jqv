@@ -29,21 +29,38 @@ class TemperatureScaler:
         self.temperature = float(temperature)
         self.meta = dict(meta or {})
 
-    def fit(self, logits: torch.Tensor, labels: torch.Tensor, max_iter: int = 200) -> "TemperatureScaler":
-        """logits: (N, Kmax) with -inf padding for unused choices; labels: (N,) int."""
-        logits = logits.float().cpu()
-        labels = labels.long().cpu()
-        log_t = torch.zeros((), requires_grad=True)
-        opt = torch.optim.LBFGS([log_t], lr=0.1, max_iter=max_iter, line_search_fn="strong_wolfe")
+    def fit(self, logits: torch.Tensor, labels: torch.Tensor, t_min: float = 0.05, t_max: float = 100.0,
+            grid: int = 400, refine: int = 40) -> "TemperatureScaler":
+        """Minimize NLL over T in [t_min, t_max] (log-spaced grid, then golden-section refinement).
 
-        def closure():
-            opt.zero_grad()
-            loss = torch.nn.functional.cross_entropy(logits / log_t.exp(), labels)
-            loss.backward()
-            return loss
+        logits: (N, Kmax) with -inf padding for unused choices; labels: (N,) int.
+        A bounded 1-D search is used instead of LBFGS: on tiny or near-separable sets (e.g. 30 items,
+        all confidently correct) the NLL keeps improving as T -> 0 and an unbounded optimizer diverges.
+        """
+        z = logits.float().cpu()
+        y = labels.long().cpu()
 
-        opt.step(closure)
-        self.temperature = float(log_t.exp().item())
+        def nll(log_t: float) -> float:
+            return torch.nn.functional.cross_entropy(z / math.exp(log_t), y).item()
+
+        lo, hi = math.log(t_min), math.log(t_max)
+        pts = torch.linspace(lo, hi, grid).tolist()
+        best = min(pts, key=nll)
+        i = pts.index(best)
+        a, b = pts[max(i - 1, 0)], pts[min(i + 1, grid - 1)]
+        phi = (math.sqrt(5) - 1) / 2
+        c, d = b - phi * (b - a), a + phi * (b - a)
+        fc, fd = nll(c), nll(d)
+        for _ in range(refine):
+            if fc < fd:
+                b, d, fd = d, c, fc
+                c = b - phi * (b - a)
+                fc = nll(c)
+            else:
+                a, c, fc = c, d, fd
+                d = a + phi * (b - a)
+                fd = nll(d)
+        self.temperature = float(math.exp((a + b) / 2))
         return self
 
     def apply(self, logits: torch.Tensor) -> torch.Tensor:
