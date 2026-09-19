@@ -34,13 +34,16 @@ def main():
     ap.add_argument("--n-val", type=int, default=256)
     ap.add_argument("--pointer-rank", type=int, default=256)
     ap.add_argument("--no-shuffle-options", action="store_true")
+    ap.add_argument("--grad-accum", type=int, default=1, help="micro-batches per step (effective batch unchanged)")
+    ap.add_argument("--grad-checkpointing", action="store_true")
     ap.add_argument("--resume", action="store_true")
     add_model_args(ap)
     a = ap.parse_args()
     cfg = TrainConfig(run_name=a.run_name, head=a.head, lora_rank=a.lora_rank, steps=a.steps, batch_size=a.batch_size,
                       lr=a.lr, head_lr=a.head_lr, brier_weight=a.brier_weight, max_len=a.max_len, seed=a.seed,
                       log_every=a.log_every, eval_every=a.eval_every, ckpt_every=a.ckpt_every, n_val=a.n_val,
-                      pointer_rank=a.pointer_rank, shuffle_options=not a.no_shuffle_options)
+                      pointer_rank=a.pointer_rank, shuffle_options=not a.no_shuffle_options,
+                      grad_accum=a.grad_accum, grad_checkpointing=a.grad_checkpointing)
     rt = load_rt(a)
     Trainer(rt, cfg, RESULTS / "train").train(resume=a.resume)
 

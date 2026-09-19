@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "model": "qwen3-1.7b",
+      "params": "1.7B",
+      "mmlu_acc_raw": 0.55375,
+      "jmmlu_acc_raw": 0.46625,
+      "ece_raw": 0.4127147286757827,
+      "ece_T": 0.08008773978799583,
+      "T": 11.955220698691763,
+      "slot_run": "slot_lora",
+      "mmlu_acc_slot": 0.575,
+      "jmmlu_acc_slot": 0.505,
+      "slot_ece_raw": 0.13705649737268685,
+      "slot_ece_T": 0.04394479386508465,
+      "packed_qps_s2k_q100": 48.64797546547206
+    }
+  ],
+  "jev": {
+    "model": "Jev (TypeSafe, Hume 2025)",
+    "params": "?",
+    "mmlu_acc_raw": 0.918,
+    "ece_raw": 0.031,
+    "note": "zero-shot; no temperature"
+  }
+}

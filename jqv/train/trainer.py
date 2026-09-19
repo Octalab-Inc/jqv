@@ -41,6 +41,8 @@ class TrainConfig:
     pointer_rank: int = 256
     slot_init_from_lm_head: bool = True
     shuffle_options: bool = True
+    grad_accum: int = 1  # split each step's batch into this many micro-batches (same effective batch / schedule)
+    grad_checkpointing: bool = False  # recompute activations in backward (needed for 32B in 128 GB)
 
 
 def brier_loss(logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -69,6 +71,9 @@ class Trainer:
             self.peft_model = get_peft_model(self.model, lcfg)
         else:
             self.peft_model = None
+        if cfg.grad_checkpointing:
+            self.model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+            self.model.enable_input_require_grads()  # frozen embeddings + checkpointing: let grads reach the LoRA layers
         hidden = self.model.config.hidden_size
         kw = {"rank": cfg.pointer_rank} if cfg.head == "pointer" else {}
         self.head = make_head(cfg.head, hidden, **kw).to(self.device)
@@ -84,7 +89,8 @@ class Trainer:
         self.log_path = self.dir / "train_log.jsonl"
         n_trainable = sum(p.numel() for g in groups for p in g["params"])
         print(f"[{cfg.run_name}] head={cfg.head} lora_rank={cfg.lora_rank} trainable params={n_trainable / 1e6:.2f}M "
-              f"steps={cfg.steps} batch={cfg.batch_size} brier_weight={cfg.brier_weight}", flush=True)
+              f"steps={cfg.steps} batch={cfg.batch_size} (x{cfg.grad_accum} micro) brier_weight={cfg.brier_weight} "
+              f"grad_ckpt={cfg.grad_checkpointing} model={rt.model_id}", flush=True)
 
     # ----- data -----
     def prepare_data(self):
@@ -179,20 +185,26 @@ class Trainer:
         t0, done0 = time.time(), self.step
         run_loss, run_n = 0.0, 0
         while self.step < self.cfg.steps:
-            batch = collate(self.next_batch(), self.pad_id, self.device)
+            examples = self.next_batch()
             scale = self.lr_scale()
             for g, base in zip(self.opt.param_groups, [self.cfg.head_lr, self.cfg.lr]):
                 g["lr"] = base * scale
-            z = self.logits_for(batch).float()
-            loss = nn.functional.cross_entropy(z, batch["y"])
-            if self.cfg.brier_weight:
-                loss = loss + self.cfg.brier_weight * brier_loss(z, batch["y"])
             self.opt.zero_grad(set_to_none=True)
-            loss.backward()
+            micro = max(1, len(examples) // self.cfg.grad_accum)
+            chunks = [examples[i : i + micro] for i in range(0, len(examples), micro)]
+            step_loss = 0.0
+            for chunk in chunks:  # gradient accumulation: same examples per step, smaller forward/backward pieces
+                batch = collate(chunk, self.pad_id, self.device)
+                z = self.logits_for(batch).float()
+                loss = nn.functional.cross_entropy(z, batch["y"])
+                if self.cfg.brier_weight:
+                    loss = loss + self.cfg.brier_weight * brier_loss(z, batch["y"])
+                (loss * len(chunk) / len(examples)).backward()
+                step_loss += loss.item() * len(chunk) / len(examples)
             torch.nn.utils.clip_grad_norm_([p for g in self.opt.param_groups for p in g["params"]], 1.0)
             self.opt.step()
             self.step += 1
-            run_loss += loss.item()
+            run_loss += step_loss
             run_n += 1
             if self.step % self.cfg.log_every == 0 or self.step == self.cfg.steps:
                 elapsed = time.time() - t0
