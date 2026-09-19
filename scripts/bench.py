@@ -70,7 +70,8 @@ def cost_tokens(engine: str, s_len: int, nq: int, q_tok: int) -> int:
 
 def eta_seconds(remaining, tps: dict, repeat: int, default_tps: float) -> float:
     total = 0.0
-    for s_len, nq, q_tok, name in remaining:
+    for s_len, nq, q_tok, label in remaining:
+        name = label.split(":")[0]
         rate = tps.get(name) or tps.get("naive") or default_tps
         total += cost_tokens(name, s_len, nq, q_tok) / rate * (repeat + 1)
     return total
@@ -83,6 +84,8 @@ def main():
     ap.add_argument("--engines", nargs="+", default=["generate", "naive", "kvcache", "packed"])
     ap.add_argument("--repeat", type=int, default=3)
     ap.add_argument("--max-generate-questions", type=int, default=100)
+    ap.add_argument("--readout", default="full", choices=["full", "rows"],
+                    help="full = B (full LM head), rows = B' (letters' rows only); rows are labelled engine:rows")
     ap.add_argument("--out", default=None,
                     help="incremental JSONL, one row per finished condition (default results/bench_<model>.jsonl). "
                          "Existing rows are reused, so a killed run resumes where it stopped.")
@@ -102,7 +105,8 @@ def main():
             for name in a.engines:
                 if name == "generate" and nq > a.max_generate_questions:
                     continue
-                plan.append((state, qs, s_len, nq, q_tok, name))
+                label = name if (a.readout == "full" or name == "generate") else f"{name}:{a.readout}"
+                plan.append((state, qs, s_len, nq, q_tok, label))
     out_jsonl = Path(a.out) if a.out else RESULTS / f"bench_{slug(rt.model_id)}.jsonl"
     done: dict[tuple, dict] = {}
     if out_jsonl.exists():
@@ -119,27 +123,29 @@ def main():
           f"(assumes {default_tps:.0f} tok/s; refined after each condition)", flush=True)
     rows = []
     t_start = time.time()
-    for idx, (state, qs, s_len, nq, q_tok, name) in enumerate(plan, 1):
-        if (name, s_len, nq) in done:
-            row = done[(name, s_len, nq)]
+    for idx, (state, qs, s_len, nq, q_tok, label) in enumerate(plan, 1):
+        name = label.split(":")[0]
+        if (label, s_len, nq) in done:
+            row = done[(label, s_len, nq)]
             rows.append(row)
             tps[name] = cost_tokens(name, s_len, nq, q_tok) / row["seconds"]
-            print(f"[{idx}/{len(plan)}] {name} S={s_len} Q={nq} already done ({row['seconds'] * 1000:.0f} ms), skipped", flush=True)
+            print(f"[{idx}/{len(plan)}] {label} S={s_len} Q={nq} already done ({row['seconds'] * 1000:.0f} ms), skipped", flush=True)
             continue
-        print(f"[{idx}/{len(plan)}] {name} S={s_len} Q={nq} ({cost_tokens(name, s_len, nq, q_tok)} tok/run)", flush=True)
-        eng = make_engine(name, rt)
-        sec = time_call(rt, lambda: eng.decide(state, qs), a.repeat, name, a.long_run_threshold)
+        print(f"[{idx}/{len(plan)}] {label} S={s_len} Q={nq} ({cost_tokens(name, s_len, nq, q_tok)} tok/run)", flush=True)
+        eng = make_engine(name, rt, readout=a.readout)
+        sec = time_call(rt, lambda: eng.decide(state, qs), a.repeat, label, a.long_run_threshold)
         tps[name] = cost_tokens(name, s_len, nq, q_tok) / sec
-        row = {"engine": name, "state_tokens": s_len, "questions": nq, "question_tokens": q_tok,
+        row = {"engine": label, "readout": "full" if name == "generate" else a.readout,
+               "state_tokens": s_len, "questions": nq, "question_tokens": q_tok,
                "seconds": sec, "questions_per_sec": nq / sec,
                "naive_equiv_tokens_per_sec": (nq * s_len + q_tok) / sec}
         rows.append(row)
         append_row(out_jsonl, row)  # saved immediately; a killed run loses at most the current condition
-        done[(name, s_len, nq)] = row
+        done[(label, s_len, nq)] = row
         write_summary(list(done.values()), rt)
         remaining = [(p[2], p[3], p[4], p[5]) for p in plan[idx:]]
         eta = eta_seconds(remaining, tps, a.repeat, default_tps)
-        print(f"{name:<9} S={s_len:>6} Q={nq:>4}  {sec * 1000:9.1f} ms  {nq / sec:8.1f} q/s   "
+        print(f"{label:<12} S={s_len:>6} Q={nq:>4}  {sec * 1000:9.1f} ms  {nq / sec:8.1f} q/s   "
               f"| elapsed {(time.time() - t_start) / 60:.1f} min, ETA remaining ~{eta / 60:.1f} min", flush=True)
     write_summary(list(done.values()), rt)
 
@@ -149,7 +155,7 @@ ENGINE_ORDER = {"generate": 0, "naive": 1, "kvcache": 2, "packed": 3}
 
 def write_summary(rows, rt) -> None:
     """Regenerate the JSON + Markdown summary from all saved rows (called after every condition)."""
-    rows = sorted(rows, key=lambda r: (r["state_tokens"], r["questions"], ENGINE_ORDER.get(r["engine"], 9)))
+    rows = sorted(rows, key=lambda r: (r["state_tokens"], r["questions"], ENGINE_ORDER.get(r["engine"].split(":")[0], 9), r["engine"]))
     base = {(r["state_tokens"], r["questions"]): r["seconds"] for r in rows if r["engine"] == "naive"}
     for r in rows:
         b = base.get((r["state_tokens"], r["questions"]))

@@ -16,8 +16,8 @@ from jqv.types import Decision, Question
 class GenerateEngine(DecisionEngine):
     name = "generate"
 
-    def __init__(self, rt, temperature=None, batch_size: int = 8, max_new_tokens: int = 4):
-        super().__init__(rt, temperature)
+    def __init__(self, rt, temperature=None, batch_size: int = 8, max_new_tokens: int = 4, readout: str = "full"):
+        super().__init__(rt, temperature)  # readout is irrelevant: generation needs the full vocabulary
         self.batch_size = batch_size
         self.max_new_tokens = max_new_tokens
 

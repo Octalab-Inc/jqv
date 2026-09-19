@@ -13,9 +13,10 @@ class DecisionEngine:
 
     name = "base"
 
-    def __init__(self, rt: Runtime, temperature: float | None = None):
+    def __init__(self, rt: Runtime, temperature: float | None = None, readout: str = "full"):
         self.rt = rt
         self.temperature = temperature
+        self.readout = readout  # "full" (B: full LM head) or "rows" (B': letters' rows only)
 
     def encode(self, state: str, questions: list[Question]) -> tuple[list[int], list[list[int]], list[list[int]]]:
         prefix = self.rt.prompt.prefix_ids(state)
@@ -31,7 +32,7 @@ class DecisionEngine:
     def decide(self, state: str, questions: list[Question]) -> list[Decision]:
         prefix, suffixes, choice_ids = self.encode(state, questions)
         hidden = self.readout_hidden(prefix, suffixes)
-        return decisions_from_hidden(hidden, self.rt.lm_head, choice_ids, self.temperature)
+        return decisions_from_hidden(hidden, self.rt.lm_head, choice_ids, self.temperature, readout=self.readout)
 
     # ----- helpers -----
     def _ids(self, seq: list[int]) -> torch.Tensor:

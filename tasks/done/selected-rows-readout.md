@@ -1,6 +1,6 @@
 ---
 title: 語彙 projection なしの選択 row readout (B') が B と同一であることを示す
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-20T01:50:40+09:00
 depends_on: []
@@ -47,3 +47,29 @@ uv run scripts/bench.py --engines packed --questions 100 --state-tokens 538 2038
 ```
 
 `--readout` は本タスクで追加するオプション。
+
+# Result
+
+## Changed
+
+- `jqv/readout.py`: `readout="full"|"rows"`。rows は `h @ W[choice_ids].T (+ bias)` で選択肢文字の行だけを計算し、`choice_mass` は `None`
+- `jqv/engine/base.py` と各 engine: `readout` 引数を追加（generate は無視）
+- `tests/test_engines_equivalence.py`: naive / kvcache / packed で full と rows の choice logits が fp32 1e-4 以内
+- `scripts/bench.py`: `--readout` オプション（rows は `engine:rows` として記録）
+- `README.md`: engine 表に B' を追加、等価性と速度比較（同一プロセス交互計測: rows/full = 0.96）
+- `results/readout_ab_qwen3-1.7b.json`: 交互計測の生データ
+
+## Verified
+
+- `uv run pytest`: 17 passed
+- `uv run scripts/bench.py --engines packed naive --questions 100 --state-tokens 500 2000 --readout rows`
+- 交互計測 5 回 × 2 条件（README の表）
+
+## Deviations
+
+- bench.py の別プロセス計測は run 間ばらつき（naive S=2038 で 41 s と 28 s）が readout の効果より大きかったため、README の比較には同一プロセス交互計測を用いた
+- 最初の rows 計測は `--state-tokens 538 2038` と誤って渡したため S=576/2076 で取れており、削除して 500/2000 で取り直した
+
+## Remaining
+
+- なし

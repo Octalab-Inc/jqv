@@ -19,6 +19,7 @@ POST /decision
 |---|---|---|---|
 | `generate` | A | 通常の `generate` で文字を出させて parse | ベースライン（生成する場合） |
 | `naive` | B | 質問ごとに prefix+suffix をフル forward、末尾 logits の `A/B/C…` だけ読む | 「生成しない」だけの効果 |
+| `readout="rows"` | B' | 全語彙 projection を行わず、LM head の選択肢文字の行だけで logits を計算（全 engine で選択可） | 「vocab projection を捨てても同じ」の証明 |
 | `kvcache` | D1 | state を 1 回 prefill → KV cache を複製して質問をバッチ | 共有計算（HF cache 方式） |
 | `packed` | D2 | `[state \| q1 \| q2 \| …]` を 1 系列にし、block attention mask で各質問が state と自分だけを見る | Hume の観測と整合する block/tree attention 実装の一つ（reference 実装） |
 
@@ -36,6 +37,8 @@ fp32 では `naive` / `kvcache` / `packed` の choice logits が 1e-4 以内で�
 つまり D2 は「Q 個の独立した prefix+q_i forward」と数値的に同じ計算を、prefix の K/V を 1 部だけ持って 1 回の forward で行う。
 
 readout は語彙 logits のうち選択肢文字 `" A"`, `" B"`, … の 1 token だけを softmax する（ラベル名を直接読まない）。
+`readout="rows"` (B') は同じ logits を `h @ W[choice_ids].T` で直接計算する。fp32 で B と 1e-4 以内で一致し
+（`tests/test_engines_equivalence.py`）、15 万次元の projection は決定に不要であることを示す。
 `confidence` は Hume が TypeSafe 公式 adapter で確認した post-hoc 指標 `(p_max − 1/K) / (1 − 1/K)` で、確率ではない
 （一様分布で 0、one-hot で 1）。entropy 版 `1 − H(p)/log K` は `entropy_concentration` として別に返す。
 
@@ -137,6 +140,17 @@ Qwen3-1.7B / bf16 / Apple M5 Max。各条件 warmup 1 回 + 3 回計測の中央
 | 8038 | 100 | 231 s  | 256 s  | 6.6 s  | **4.8 s**  | **53x** |
 
 Q=1 では 4 engine とも同等（共有するものがない。S=8038 で naive / packed とも 0.79 s）。
+
+B vs B'（readout full / rows、packed、Q=100、同一プロセスで交互に 5 回計測した中央値、`results/readout_ab_qwen3-1.7b.json`）:
+
+| state tok | full (B) | rows (B') | rows / full |
+|---:|---:|---:|---:|
+| 538  | 1.19 s | 1.14 s | 0.96 |
+| 2038 | 1.62 s | 1.56 s | 0.96 |
+
+差は約 4%（Q=100 で 40〜60 ms、LM head の (100 × 151k) projection と softmax の分）で、backbone に比べて無視できる。
+B' の価値は速度ではなく「語彙 projection なしでも決定が同一」という切り分けにある。
+なお `results/bench_qwen3-1.7b.md` の `:rows` 行は別プロセスで測ったもので、run 間のばらつき（±30%）を含む。
 
 読み取れること:
 

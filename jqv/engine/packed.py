@@ -72,8 +72,9 @@ def branch_position_ids(prefix_len: int, branch_lens: list[int], include_prefix:
 class PackedEngine(DecisionEngine):
     name = "packed"
 
-    def __init__(self, rt, temperature=None, max_tokens: int = 16384, use_prefix_cache: bool = False, isolate: bool = True):
-        super().__init__(rt, temperature)
+    def __init__(self, rt, temperature=None, max_tokens: int = 16384, use_prefix_cache: bool = False,
+                 isolate: bool = True, readout: str = "full"):
+        super().__init__(rt, temperature, readout)
         self.max_tokens = max_tokens
         self.use_prefix_cache = use_prefix_cache
         self.isolate = isolate
