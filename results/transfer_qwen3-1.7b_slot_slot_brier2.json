@@ -1,0 +1,177 @@
+{
+  "temperatures": {
+    "mmlu": 1.474069058801824,
+    "jmmlu": 1.548657715349692,
+    "mmlu+jmmlu": 1.507909715172045,
+    "oracle:mmlu": 1.3837447762367798,
+    "oracle:jmmlu": 1.5860592722170734,
+    "oracle:bridge": 0.05000016651896247
+  },
+  "rows": [
+    {
+      "source": "none (T=1)",
+      "target": "mmlu",
+      "temperature": 1.0,
+      "n": 800,
+      "accuracy": 0.54875,
+      "nll": 1.0688942670822144,
+      "brier": 0.5707606673240662,
+      "ece": 0.08186831332743169,
+      "mean_confidence": 0.629336953163147
+    },
+    {
+      "source": "mmlu",
+      "target": "mmlu",
+      "temperature": 1.474069058801824,
+      "n": 800,
+      "accuracy": 0.54875,
+      "nll": 1.0430450439453125,
+      "brier": 0.5595515966415405,
+      "ece": 0.04609224036335947,
+      "mean_confidence": 0.5414015054702759
+    },
+    {
+      "source": "jmmlu",
+      "target": "mmlu",
+      "temperature": 1.548657715349692,
+      "n": 800,
+      "accuracy": 0.54875,
+      "nll": 1.0447821617126465,
+      "brier": 0.5601669549942017,
+      "ece": 0.05042765572667123,
+      "mean_confidence": 0.530463457107544
+    },
+    {
+      "source": "mmlu+jmmlu",
+      "target": "mmlu",
+      "temperature": 1.507909715172045,
+      "n": 800,
+      "accuracy": 0.54875,
+      "nll": 1.0437304973602295,
+      "brier": 0.5597792267799377,
+      "ece": 0.04429740201681853,
+      "mean_confidence": 0.5363574624061584
+    },
+    {
+      "source": "oracle:mmlu",
+      "target": "mmlu",
+      "temperature": 1.3837447762367798,
+      "n": 800,
+      "accuracy": 0.54875,
+      "nll": 1.0422194004058838,
+      "brier": 0.5594231486320496,
+      "ece": 0.03505618810653686,
+      "mean_confidence": 0.5555641651153564
+    },
+    {
+      "source": "none (T=1)",
+      "target": "jmmlu",
+      "temperature": 1.0,
+      "n": 800,
+      "accuracy": 0.48,
+      "nll": 1.216848611831665,
+      "brier": 0.6526649594306946,
+      "ece": 0.09767442863434551,
+      "mean_confidence": 0.5770540237426758
+    },
+    {
+      "source": "mmlu",
+      "target": "jmmlu",
+      "temperature": 1.474069058801824,
+      "n": 800,
+      "accuracy": 0.48,
+      "nll": 1.172123908996582,
+      "brier": 0.6336277723312378,
+      "ece": 0.037576070949435214,
+      "mean_confidence": 0.49333617091178894
+    },
+    {
+      "source": "jmmlu",
+      "target": "jmmlu",
+      "temperature": 1.548657715349692,
+      "n": 800,
+      "accuracy": 0.48,
+      "nll": 1.1713194847106934,
+      "brier": 0.633094310760498,
+      "ece": 0.043868130855262304,
+      "mean_confidence": 0.4833555221557617
+    },
+    {
+      "source": "mmlu+jmmlu",
+      "target": "jmmlu",
+      "temperature": 1.507909715172045,
+      "n": 800,
+      "accuracy": 0.48,
+      "nll": 1.1716468334197998,
+      "brier": 0.6333326101303101,
+      "ece": 0.03510278008878231,
+      "mean_confidence": 0.4887215495109558
+    },
+    {
+      "source": "oracle:jmmlu",
+      "target": "jmmlu",
+      "temperature": 1.5860592722170734,
+      "n": 800,
+      "accuracy": 0.48,
+      "nll": 1.1712305545806885,
+      "brier": 0.6329784393310547,
+      "ece": 0.039457562640309335,
+      "mean_confidence": 0.47860556840896606
+    },
+    {
+      "source": "none (T=1)",
+      "target": "bridge",
+      "temperature": 1.0,
+      "n": 30,
+      "accuracy": 1.0,
+      "nll": 0.14731566607952118,
+      "brier": 0.07045172154903412,
+      "ece": 0.1199427455663681,
+      "mean_confidence": 0.8800573348999023
+    },
+    {
+      "source": "mmlu",
+      "target": "bridge",
+      "temperature": 1.474069058801824,
+      "n": 30,
+      "accuracy": 1.0,
+      "nll": 0.23589147627353668,
+      "brier": 0.10334953665733337,
+      "ece": 0.192202498515447,
+      "mean_confidence": 0.8077974915504456
+    },
+    {
+      "source": "jmmlu",
+      "target": "bridge",
+      "temperature": 1.548657715349692,
+      "n": 30,
+      "accuracy": 1.0,
+      "nll": 0.25076764822006226,
+      "brier": 0.10946282744407654,
+      "ece": 0.2039508144060771,
+      "mean_confidence": 0.796049177646637
+    },
+    {
+      "source": "mmlu+jmmlu",
+      "target": "bridge",
+      "temperature": 1.507909715172045,
+      "n": 30,
+      "accuracy": 1.0,
+      "nll": 0.2426294982433319,
+      "brier": 0.1060955747961998,
+      "ece": 0.1975384831428528,
+      "mean_confidence": 0.802461564540863
+    },
+    {
+      "source": "oracle:bridge",
+      "target": "bridge",
+      "temperature": 0.05000016651896247,
+      "n": 30,
+      "accuracy": 1.0,
+      "nll": 0.019105995073914528,
+      "brier": 0.00906961876899004,
+      "ece": 0.016165630022684733,
+      "mean_confidence": 0.9838343262672424
+    }
+  ]
+}

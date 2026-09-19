@@ -332,6 +332,25 @@ Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk で�
 5. 学習は `results/train/<run>/train_log.jsonl` に step ごとの loss と検証値、`best/`・`last/` に checkpoint が残る。
    pointer + LoRA の best は step 300（val NLL 1.145）で、その後は過学習気味。
 
+### E: 校正指向学習 `L = CE + λ·Brier`（slot + LoRA、λ ∈ {0, 0.5, 1, 2}、他は同一設定）
+
+| λ | MMLU acc | NLL raw / +T | Brier raw / +T | ECE raw / +T | T | JMMLU acc | NLL raw / +T | ECE raw / +T | bridge NLL / ECE (T=1) |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0   | 0.575 | 1.056 / **0.977** | 0.554 / **0.523** | 0.137 / **0.044** | 1.82 | 0.505 | 1.233 / 1.118 | 0.158 / 0.029 | 0.064 / 0.056 |
+| 0.5 | 0.573 | 1.052 / 0.979 | 0.551 / 0.524 | 0.135 / 0.051 | 1.78 | 0.505 | 1.220 / 1.119 | 0.150 / 0.036 | 0.057 / 0.050 |
+| 1   | **0.579** | **1.049** / 0.981 | 0.552 / 0.524 | 0.128 / 0.051 | 1.76 | **0.507** | 1.217 / 1.119 | 0.147 / **0.028** | 0.061 / 0.053 |
+| 2   | 0.549 | 1.069 / 1.043 | 0.571 / 0.560 | **0.082** / 0.046 | 1.47 | 0.480 | 1.217 / 1.171 | **0.098** / 0.044 | 0.147 / 0.120 |
+
+- **λ ≤ 1 では CE 単独と区別がつかない。** accuracy / NLL / ECE の差は 800 問の信頼区間（±3.4 ポイント、ECE ±0.01 程度）の内側。
+- **λ=2 は「生の確率」を平らにする方向に効く**（平均 confidence 0.71 → 0.63、raw ECE 0.137 → 0.082）が、精度が 3 ポイント落ち、
+  温度を当てた後の NLL / Brier は λ=0 より悪い（0.977 → 1.043）。つまり Brier 項は識別力を上げるのではなく、学習時に温度を内蔵する働きをしている。
+  校正セットが取れない運用では価値があるが、val で温度を 1 つ学習できるなら CE + T のほうが良い。
+- **タスク種別をまたぐ転移はどの λ でも解けない。** bridge では全 λ で T=1 が最良で、MMLU の T を当てると ECE は 0.15〜0.19 に悪化する。
+  λ=2 の bridge raw ECE（0.120）は λ=0（0.056）より悪い。
+- Jev の ECE 0.031（zero-shot）に対し、slot + LoRA + in-distribution T は JMMLU で 0.028〜0.029、MMLU で 0.044〜0.051。
+  「学習 + 温度」で数値上は同水準に届くが、温度なしで・分布をまたいで 0.03 を出す Jev の RLCD とは条件が違う。
+- 14B / 32B に持っていく既定値は **λ=1**（MMLU val NLL が最小: 1.089 vs λ=0 の 1.103。差はノイズ範囲なので λ=0 でも同等）。
+
 ### 精度の読み方（`scripts/compare_runs.py`）
 
 精度は argmax の正解率で、温度では変わらない。Decision API では「確率が正直か」（ECE / NLL / Brier）と、
@@ -399,7 +418,7 @@ Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk で�
 
 ## 次フェーズ（未実装）
 
-- **C: 専用 readout head** — `engine/head.py` で最終 hidden state → `nn.Linear(hidden_size, max_choices)`。LLM は freeze。
-  語彙 15 万次元ではなく選択肢次元を直接出す。Hume の「slot head」相当。
-- **E: 校正指向の post-training** — `L = CE + λ·Brier` で head または LoRA を学習（TRL/PEFT）。その先で RL / preference optimization。
+- **C（実装済み）** — slot / pointer head + LoRA は上の C 節。LLM 凍結 + 新規 head は B より劣る（−8 ポイント）ので、表現側を動かす LoRA が必須。
+- **RL / preference optimization** — CE + λ·Brier では temperature scaling を超えなかった（上の E 節）。分布をまたいで校正を保つには
+  RLCD 型（結果に基づく proper scoring）の post-training が次の候補。
 - **本番サービング** — Linux GPU で vLLM + Automatic Prefix Caching、同じ `/decision` エンドポイント。

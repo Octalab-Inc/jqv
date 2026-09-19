@@ -1,6 +1,6 @@
 ---
 title: CE + λ·Brier の校正指向学習で ECE が temperature scaling を超えて下がるか検証する
-status: pending
+status: done
 priority: P3
 created_at: 2026-09-20T01:50:47+09:00
 depends_on:
@@ -45,3 +45,30 @@ uv run scripts/eval.py --dataset mmlu --engine pointer --n 1200 --n-val 400
 ```
 
 コマンドの詳細は `pointer-head-lora` の実装後に確定する。
+
+# Result
+
+## Changed
+
+- `jqv/train/trainer.py`: `brier_weight`（`L = CE + λ·Brier`、実装は前タスクから）、`grad_accum` / `grad_checkpointing`（14B / 32B 用）
+- `scripts/train_head.py`: `--brier-weight`, `--grad-accum`, `--grad-checkpointing`
+- `scripts/compare_runs.py`: 同一 test での対応比較（binomial CI、bootstrap Δ、McNemar）と閾値別の選択的精度
+- `scripts/transfer_temperature.py`: `--engine` / `--suffix` で学習 run のキャッシュにも適用可能
+- `scripts/scaling_table.py`: backbone スケーリング表（次タスク群で使用）
+- `README.md`: E 節（λ 表、結論）、「精度の読み方」節、次フェーズの更新
+- `results/scaling_best_config_qwen3-1.7b.json`: 1.7B での既定 λ=1（根拠付き）
+
+## Verified
+
+- 学習 3 本（slot_brier05 / slot_brier1 / slot_brier2、各 600 step）が完走。λ=0 は `slot_lora` を流用
+- 各 run を MMLU / JMMLU test 800 と bridge で評価、`fit_temperature.py`（+T）、`transfer_temperature.py`（bridge への転移）
+- `uv run pytest` 全件成功（grad-accum + checkpointing の smoke run 12 step で動作確認）
+
+## Deviations
+
+- λ の選定基準は「MMLU val NLL 最小」としたが、差はノイズ範囲であることを README に明記
+- bridge の oracle T は 30 問全問正解のため下限（0.05）に張り付く。表では T=1 の値を採用
+
+## Remaining
+
+- RL / preference optimization（RLCD 型）は未着手。次フェーズ候補として README に記載

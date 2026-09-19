@@ -1,0 +1,8 @@
+{
+  "model": "Qwen/Qwen3-1.7B",
+  "head": "slot",
+  "lora_rank": 16,
+  "brier_weight": 1.0,
+  "run": "slot_brier1",
+  "criterion": "min MMLU val NLL (1.089 vs 1.103 at \u03bb=0; within noise)"
+}
