@@ -1,6 +1,6 @@
 ---
 title: 選択肢の並び順による確率変動と 5 番目選択肢効果を n=300 で定量化する
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-20T01:50:44+09:00
 depends_on:
@@ -41,3 +41,23 @@ depends_on:
 uv run scripts/permutation_test.py --mode order --n 300
 uv run scripts/permutation_test.py --mode fifth --n 300
 ```
+
+# Result
+
+## Changed
+
+- `scripts/permutation_test.py`: `--mode order`（並びだけ巡回）と `--mode fifth`（5 番目追加、Δlog-odds と 95% CI、5 番目の確率質量、argmax flip 率）を計測
+- `README.md`: 「選択肢の並び順と 5 番目選択肢」節（label と order を並べた表、fifth の表）。旧 n=21 の記述を差し替え
+- `results/permutation_order_qwen3-1.7b.json`, `results/permutation_fifth_qwen3-1.7b.json`
+
+## Verified
+
+- `uv run scripts/permutation_test.py --mode order --n 300`、`--mode fifth --n 300` が完走し JSON を生成
+
+## Deviations
+
+- fifth の 5 番目文言「該当なし／不明」は日本語のままで英語 MMLU にも使った（isolation_test.py と同じ文言で比較可能にするため）。5 番目に 19% の確率が乗る一因になっている可能性を README に注記
+
+## Remaining
+
+- 選択肢文言の言語を揃えた fifth の再測定
