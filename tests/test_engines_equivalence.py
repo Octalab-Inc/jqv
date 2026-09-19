@@ -25,11 +25,14 @@ def test_engine_matches_naive(rt, bridge_items, engine, kwargs):
     assert len(qs) >= 3
     ref = make_engine("naive", rt).decide(state, qs)
     out = make_engine(engine, rt, **kwargs).decide(state, qs)
-    tol = 1e-3 if rt.dtype.is_floating_point and rt.dtype.itemsize == 4 else 5e-2
+    fp32 = rt.dtype.itemsize == 4
+    # fp32: exact up to accumulation order. bf16: logits of magnitude 32-128 have a spacing of 0.25-0.5, so two
+    # forward paths can differ by a couple of ulps (observed: exactly 0.5 at Qwen3-14B); probabilities within 5e-2.
+    tol_logit, tol_prob = (1e-2, 1e-3) if fp32 else (1.0, 5e-2)
     for a, b in zip(ref, out):
         assert len(a.logits) == len(b.logits)
-        assert max(abs(x - y) for x, y in zip(a.logits, b.logits)) < tol * 10
-        assert max(abs(x - y) for x, y in zip(a.probabilities, b.probabilities)) < tol
+        assert max(abs(x - y) for x, y in zip(a.logits, b.logits)) <= tol_logit
+        assert max(abs(x - y) for x, y in zip(a.probabilities, b.probabilities)) < tol_prob
 
 
 @pytest.mark.parametrize("engine", ["naive", "kvcache", "packed", "shared"])
