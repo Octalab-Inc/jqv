@@ -1,0 +1,14 @@
+{
+  "n": 800,
+  "accuracy": 0.55375,
+  "nll": 5.785295486450195,
+  "brier": 0.8516595363616943,
+  "ece": 0.4127147286757827,
+  "mean_confidence": 0.9637393355369568,
+  "engine": "packed",
+  "model": "Qwen/Qwen3-1.7B",
+  "dtype": "torch.bfloat16",
+  "dataset": "mmlu",
+  "seconds": 20.04957413673401,
+  "questions_per_sec": 59.85164531756359
+}

@@ -1,0 +1,14 @@
+{
+  "n": 30,
+  "accuracy": 0.9333333333333333,
+  "nll": 0.10185699164867401,
+  "brier": 0.0791453868150711,
+  "ece": 0.051323600610097254,
+  "mean_confidence": 0.9840851426124573,
+  "engine": "packed",
+  "model": "Qwen/Qwen3-1.7B",
+  "dtype": "torch.bfloat16",
+  "dataset": "bridge",
+  "seconds": 0.7477607727050781,
+  "questions_per_sec": 40.11978308446544
+}

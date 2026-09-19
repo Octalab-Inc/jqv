@@ -1,0 +1,43 @@
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class Question(BaseModel):
+    question: str
+    choices: list[str] = Field(min_length=2, max_length=26)
+
+
+class Decision(BaseModel):
+    """Result of one question.
+
+    logits: raw next-token logits of the choice letters (length = len(choices)).
+    probabilities: softmax(logits) (temperature 1).
+    calibrated_probabilities: softmax(logits / T) with fitted temperature, or None.
+    confidence: 1 - H(p)/log(K), i.e. distance from uniform (post-hoc; not a probability).
+    choice_mass: total probability mass the full-vocab softmax puts on the choice letters (diagnostic).
+    """
+
+    logits: list[float]
+    probabilities: list[float]
+    calibrated_probabilities: list[float] | None = None
+    confidence: float
+    choice_mass: float | None = None
+    parsed: bool | None = None  # generate engine only: whether a letter could be parsed
+
+    @property
+    def argmax(self) -> int:
+        p = self.calibrated_probabilities or self.probabilities
+        return max(range(len(p)), key=lambda i: p[i])
+
+
+class DecisionRequest(BaseModel):
+    state: str = ""
+    questions: list[Question] = Field(min_length=1)
+
+
+class DecisionResponse(BaseModel):
+    engine: str
+    model: str
+    temperature: float
+    decisions: list[Decision]
