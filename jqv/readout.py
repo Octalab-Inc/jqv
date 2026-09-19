@@ -10,7 +10,19 @@ from jqv.types import Decision
 
 
 def confidence_from_probs(p: torch.Tensor) -> float:
-    """1 - H(p) / log K. 1.0 = one-hot, 0.0 = uniform."""
+    """Jev-compatible confidence: (p_max - 1/K) / (1 - 1/K). 1.0 = one-hot, 0.0 = uniform.
+
+    This is the post-hoc formula Hume confirmed in TypeSafe's official adapter. It summarizes how far the
+    distribution is from uniform; it is not itself a probability of being correct.
+    """
+    k = p.numel()
+    if k <= 1:
+        return 1.0
+    return max(0.0, (p.max().item() - 1.0 / k) / (1.0 - 1.0 / k))
+
+
+def entropy_concentration(p: torch.Tensor) -> float:
+    """1 - H(p) / log K. 1.0 = one-hot, 0.0 = uniform. Entropy-based alternative to `confidence`."""
     k = p.numel()
     if k <= 1:
         return 1.0
@@ -38,12 +50,14 @@ def decisions_from_hidden(
             z = logits[i, ids]
             p = z.softmax(dim=-1)
             cal = (z / temperature).softmax(dim=-1) if temperature else None
+            ref = cal if cal is not None else p
             out.append(
                 Decision(
                     logits=z.tolist(),
                     probabilities=p.tolist(),
                     calibrated_probabilities=cal.tolist() if cal is not None else None,
-                    confidence=confidence_from_probs(cal if cal is not None else p),
+                    confidence=confidence_from_probs(ref),
+                    entropy_concentration=entropy_concentration(ref),
                     choice_mass=full_probs[i, ids].sum().item(),
                 )
             )

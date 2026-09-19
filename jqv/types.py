@@ -14,7 +14,8 @@ class Decision(BaseModel):
     logits: raw next-token logits of the choice letters (length = len(choices)).
     probabilities: softmax(logits) (temperature 1).
     calibrated_probabilities: softmax(logits / T) with fitted temperature, or None.
-    confidence: 1 - H(p)/log(K), i.e. distance from uniform (post-hoc; not a probability).
+    confidence: Jev-compatible (p_max - 1/K) / (1 - 1/K), i.e. distance from uniform (post-hoc; not a probability).
+    entropy_concentration: 1 - H(p)/log(K), an entropy-based alternative summary (post-hoc; not a probability).
     choice_mass: total probability mass the full-vocab softmax puts on the choice letters (diagnostic).
     """
 
@@ -22,6 +23,7 @@ class Decision(BaseModel):
     probabilities: list[float]
     calibrated_probabilities: list[float] | None = None
     confidence: float
+    entropy_concentration: float | None = None
     choice_mass: float | None = None
     parsed: bool | None = None  # generate engine only: whether a letter could be parsed
 

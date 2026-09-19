@@ -20,7 +20,7 @@ POST /decision
 | `generate` | A | 通常の `generate` で文字を出させて parse | ベースライン（生成する場合） |
 | `naive` | B | 質問ごとに prefix+suffix をフル forward、末尾 logits の `A/B/C…` だけ読む | 「生成しない」だけの効果 |
 | `kvcache` | D1 | state を 1 回 prefill → KV cache を複製して質問をバッチ | 共有計算（HF cache 方式） |
-| `packed` | D2 | `[state \| q1 \| q2 \| …]` を 1 系列にし、block attention mask で各質問が state と自分だけを見る | Hume 推定の Jev 構造 |
+| `packed` | D2 | `[state \| q1 \| q2 \| …]` を 1 系列にし、block attention mask で各質問が state と自分だけを見る | Hume の観測と整合する block/tree attention 実装の一つ（reference 実装） |
 
 `packed` の attention mask と position id:
 
@@ -36,7 +36,18 @@ fp32 では `naive` / `kvcache` / `packed` の choice logits が 1e-4 以内で�
 つまり D2 は「Q 個の独立した prefix+q_i forward」と数値的に同じ計算を、prefix の K/V を 1 部だけ持って 1 回の forward で行う。
 
 readout は語彙 logits のうち選択肢文字 `" A"`, `" B"`, … の 1 token だけを softmax する（ラベル名を直接読まない）。
-`confidence` は Hume の言う post-hoc 指標（一様分布からの距離 `1 - H(p)/log K`）で、確率ではない。
+`confidence` は Hume が TypeSafe 公式 adapter で確認した post-hoc 指標 `(p_max − 1/K) / (1 − 1/K)` で、確率ではない
+（一様分布で 0、one-hot で 1）。entropy 版 `1 − H(p)/log K` は `entropy_concentration` として別に返す。
+
+**Qwen3 の thinking は無効化して固定している。** Qwen3 の chat template は既定で `enable_thinking=True` なので、
+そのまま assistant 直後の logits を読むと「本当は `<think>` を始めたい位置で無理やり A/B/C を比較する」ことになる。
+jqv は assistant 側を `<think>\n\n</think>\n\n` + `Answer:` で始める非 thinking プロンプトを `jqv/prompt.py` に固定し、
+`tests/test_prompt.py` が公式 `apply_chat_template(enable_thinking=False)` と完全一致することを検証している。
+generate (A) も同じ prefix + suffix を使うので、A/B/D1/D2 の比較に reasoning 有無の差は混じらない。
+
+**packed は Jev の再現ではなく、Jev で観測された挙動（shared state、sibling isolation、確率の直接 readout）を
+open な Qwen で再現できることを示す reference 実装である。** Hume 自身も sibling isolation は tree mask 以外の仕組みでも
+実現でき、exact な attention mask までは分からないと留保している。
 
 ## セットアップ
 
@@ -147,6 +158,13 @@ Q=1 では 4 engine とも同等（共有するものがない。S=8038 で naiv
 - **長い packed 列**: `PackedEngine(max_tokens=…)` を超える場合は prefix を cache に入れ、質問側だけを chunk で pack する（同じ mask、query 行 = 質問のみ）。
 - **明示 mask のコスト**: 4D mask を渡すと sdpa の causal 高速パスが使えず、8k 系列で約 2 倍遅くなる。
   そのため分岐が 1 本のとき（packed）と padding が不要なとき（naive）は mask を渡さない。
+- **packed の block sparsity は演算削減に使われていない（reference 実装の限界）**: HF の SDPA / eager backend は
+  `(1, 1, L, L)` の raw 4D mask を受け取り、attention を dense に計算してから mask する。共有されるのは prefix の
+  線形層（QKV/MLP）の計算と K/V であり、attention 行列そのものは L² で作られる。
+  S=8038・Q=100（L ≈ 13.5k）では理想比が線形層 60x・attention 36x で、実測 53x はその間に落ちる。
+  Jev 規模（state 23k × 5,000 問、L ≈ 173k）では mask だけで bf16 60GB、attention FLOPs は理想の約 8 倍になり、
+  この実装のままでは成立しない。物理的に sparsity を使う実装（shared prefix への attention を全 branch でまとめる
+  Hydragen 型分解、CUDA では FlexAttention の BlockMask）は D3 として別に扱う。
 - **bench.py は条件ごとに JSONL へ追記し、再実行時は完了済み条件をスキップする。** 途中で止めても失うのは実行中の 1 条件だけ。
 - **校正**: 1-token readout の生 logits は非常に尖っており（MMLU で mean confidence ≈ 0.96, ECE ≈ 0.38）、
   temperature scaling だけで ECE は 0.06 前後まで落ちる。「0.8 と言ったら 8 割当たる」の最初の一歩はモデル改造なしで到達できる。

@@ -1,6 +1,6 @@
 ---
 title: confidence を Jev 互換の式にし README の主張を正確にする
-status: pending
+status: done
 priority: P1
 created_at: 2026-09-20T01:50:39+09:00
 depends_on: []
@@ -44,3 +44,25 @@ uv run pytest
 grep -n "Hume 推定の Jev 構造" README.md   # 0 件であること
 grep -n "enable_thinking" README.md          # 記載があること
 ```
+
+# Result
+
+## Changed
+
+- `jqv/readout.py`: `confidence_from_probs` を `(p_max − 1/K)/(1 − 1/K)` に変更し、entropy 版を `entropy_concentration` として追加
+- `jqv/types.py`, `jqv/engine/generate.py`: `Decision.entropy_concentration` を追加
+- `tests/test_readout.py`: 式のテスト（一様→0、one-hot→1、K=2 p=(0.75,0.25)→0.5）
+- `README.md`: engine 表の文言、`confidence` の定義、`enable_thinking=False` 固定の明記、packed が reference 実装であることと理想比・実測・Jev 規模の見積り
+
+## Verified
+
+- `uv run pytest`: 14 passed
+- `grep "Hume 推定の Jev 構造" README.md`: 0 件、`grep enable_thinking README.md`: 記載あり
+
+## Deviations
+
+- なし
+
+## Remaining
+
+- なし

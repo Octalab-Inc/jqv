@@ -9,7 +9,7 @@ import torch
 
 from jqv.engine.base import DecisionEngine
 from jqv.prompt import LETTERS
-from jqv.readout import confidence_from_probs
+from jqv.readout import confidence_from_probs, entropy_concentration
 from jqv.types import Decision, Question
 
 
@@ -61,6 +61,7 @@ class GenerateEngine(DecisionEngine):
                         logits=[0.0] * k,
                         probabilities=p,
                         confidence=confidence_from_probs(torch.tensor(p)),
+                        entropy_concentration=entropy_concentration(torch.tensor(p)),
                         parsed=parsed,
                     )
                 )
