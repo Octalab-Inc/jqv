@@ -1,6 +1,6 @@
 ---
 title: 関連プロジェクト（Simple Jev, NanoJev, SemIf, openjev-sglang, Hydragen, DeFT）との位置づけを README に書く
-status: pending
+status: done
 priority: P3
 created_at: 2026-09-20T05:23:55+09:00
 depends_on: []
@@ -39,3 +39,22 @@ jqv と同じ仮説（生成しない直接 readout、shared state、学習 head
 # Verify
 
 README を読んで URL が開くことを確認する。
+
+# Result
+
+## Changed
+
+- `README.md`: 「関連プロジェクト」節（表 8 件 + 一覧 3 件、URL 付き。jqv の独自性 4 点、NanoJev の評価方針との対応、RLCD 型を次候補とする整理）
+
+## Verified
+
+- 各 URL は WebSearch で 2026-09-20 に実在を確認（simple-jev, NanoJev, SemIf, openjev-sglang, mini-jev, jev-forge, awesome-jev, LightJev, qwen-rlcd, Hydragen arXiv:2402.05099, DeFT arXiv:2404.00242）
+- 数値（SemIf の 81.3% / 84.5% / 1.02 s vs 5.33 s、Hydragen の 32x、DeFT の 73〜99%）は各 README / abstract の自己申告値であることを明記
+
+## Deviations
+
+- ユーザーの調査メモにあった数値のうち、一次情報で確認できなかったものは README に載せず「自己申告」の注記で扱った
+
+## Remaining
+
+- なし

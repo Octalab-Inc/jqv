@@ -449,6 +449,36 @@ MoE（30B-A3B）と Qwen3.5（hybrid attention）は attention / KV 構造の議
 
 次は 14B で slot + LoRA（λ sweep）を行い、その最良設定を 32B に持っていく。
 
+## 関連プロジェクト
+
+同じ仮説（生成せず選択肢 token の logits を直接読む、shared state を 1 回 prefill する、学習 head、Brier 学習、shared-prefix attention）に
+2026 年に複数の公開実装が独立に到達している。URL は確認済み（2026-09-20）。数値は各リポジトリの README の自己申告で、jqv とは benchmark も条件も異なる。
+
+| project | jqv との近さ | 特徴 | jqv との差 |
+|---|---|---|---|
+| [featherless-ai/simple-jev](https://github.com/featherless-ai/simple-jev) | ★★★★★ | prefill の next-token logits で answer label を読む。共通 prefix の KV cache を質問 suffix のバッチで再利用。RFDT（answer-token logits を直接学習、LoRA） | jqv の naive → kvcache（B → D1）と同じ発想。README で「softmax 値は校正された正解確率ではない」と明記。jqv は packed / shared（D2 / D3）と校正の測定まで進めている |
+| [TianyuCodings/NanoJev](https://github.com/TianyuCodings/NanoJev) | ★★★★★ | Qwen3-0.6B + 専用 decision head。CE / Brier 学習、observed-event probability、paired proper-reward、RLCD 風実験。simulator（maze / Snake）で真の確率 q と比較 | jqv の C / E と同テーマ。NanoJev は真値 q が取れる制御環境、jqv は MMLU / JMMLU / bridge の一般 semantic decision。「ECE だけでなく NLL / Brier、risk-coverage、OOD を分けて見る」という評価方針は jqv の `compare_runs.py`（選択的精度）と温度転移表に対応する |
+| [TheoLeeCJ/SemIf](https://github.com/TheoLeeCJ/SemIf)（旧 OpenJev） | ★★★★☆ | Qwen3.5-4B、runtime-defined criteria、direct option logits、shared-state prefill。自作 benchmark と TypeSafe 公開 subset で比較（README の自己申告値） | 「scores は Jev 型の運用校正ではない」と明記し、issue で「task ごとに最適温度が違うのでは」が議論されている。jqv はこれを実測済み（言語間は転移、task 種別は転移しない） |
+| [ekzhang/openjev-sglang](https://github.com/ekzhang/openjev-sglang) | ★★★★☆ | Qwen3.6-35B-A3B + SGLang radix cache で Jev 互換 API（choice / noul / rubric、prefill のみ）。TypeSafe 公式 SDK で疎通 | jqv の「本番サービング」フェーズを先行。校正は「supplied options に条件付いた確率で、正解の校正推定ではない」と明記 |
+| [r-ms/mini-jev](https://github.com/r-ms/mini-jev) | ★★★★☆ | 凍結 Qwen3-4B で option letter の logits を読む事前登録実験 | jqv の B と同じ readout。学習・共有計算・校正は扱わない |
+| [zwliJay/jev-forge](https://github.com/zwliJay/jev-forge) | ★★★☆☆ | shared prefix から dynamic candidate branch をスコアする学習・推論スタック（高 cardinality、校正、バッチ推論） | 学習スタックとしては近い。jqv は engine の ablation と校正測定に寄っている |
+| [Hydragen](https://arxiv.org/abs/2402.05099)（Juravsky et al., 2024） | システム | shared prefix への attention を全 suffix の query でまとめて計算し、KV の読み出しを共有。CodeLlama-13B で最大 32x | jqv の D3（`jqv/engine/shared.py`）はこの分解の PyTorch 実装。MPS では probe 用の 2 回目 SDPA が要るため dense packed に負ける条件がある |
+| [DeFT](https://arxiv.org/abs/2404.00242)（Yao et al., ICLR 2025） | システム | tree 構造の推論向け Flash Tree-attention。shared KV の IO を 73〜99% 削減 | jqv の packed / D3 の CUDA 実装（FlexAttention BlockMask）の先にある方向 |
+
+他に同種の実装として [cobanov/awesome-jev](https://github.com/cobanov/awesome-jev)（Jev 関連プロジェクトの一覧）、
+[rongxinzy/LightJev](https://github.com/rongxinzy/LightJev)、[shamazharikh/qwen-rlcd](https://github.com/shamazharikh/qwen-rlcd) がある。
+
+jqv の独自性は次の 4 点にある。
+
+1. engine を A / B / B' / D1 / D2 / D3 に分解し、fp32 で choice logits が一致することをテストで担保したうえで速度を比較している（他は shared KV までで、packed block mask と causal 負対照の系統比較はない）。
+2. Hume の secret-code isolation を負対照付きで再現している（packed 0.000、packed_causal 0.996）。
+3. 一般 semantic benchmark（MMLU / JMMLU / bridge）で raw → 温度 → slot + LoRA → CE + λ·Brier を同一 test で比較し、対応比較と選択的精度で報告している。
+4. 温度の domain 転移（言語間は転移、task 種別は転移しない）を実測している。
+
+一方で、NanoJev が RL を「sampling / interaction しか得られない場合の手段」と整理し、logits と真値が取れるなら Brier を直接 backprop する方が
+自然としている点は、jqv の E（CE + λ·Brier を先に試す）の方針と一致する。jqv の結果では λ ≤ 1 は CE と区別がつかず、分布をまたぐ校正は
+温度でも Brier でも解けていないので、次は RLCD 型（結果ベースの proper scoring）が候補になる。
+
 ## 設計メモ
 
 - **prefix / suffix の分割 tokenize**: state 側と質問側を別々に tokenize し、全 engine が同じ token id 列を使う。
