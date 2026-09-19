@@ -300,7 +300,37 @@ Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk で�
   checkpoint（`results/train/<run>/last`）と検証（best は `best/`）、`--resume` で続きから再開できる。
 - 推論は `make_engine("pointer", rt, head_dir="results/train/<run>/best")`。head は学習時の model と prompt_hash を記録し、不一致なら拒否する。
 
-HEAD_RESULTS_PLACEHOLDER
+### 結果（600 step × batch 8 = 4,800 例、MPS で 11〜24 分、test 800 問。raw = 校正なし、+T = val 400 問で学習した温度）
+
+| 方式 | 学習パラメータ | MMLU acc | MMLU NLL raw / +T | MMLU ECE raw / +T | JMMLU acc | JMMLU NLL raw / +T | JMMLU ECE raw / +T |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| B: 語彙 readout（学習なし） | 0 | 0.554 | 5.79 / 1.08 | 0.41 / 0.080 | 0.466 | 6.13 / 1.19 | 0.49 / 0.066 |
+| C1: slot + LoRA r=16 | 6.5M | **0.575** | 1.06 / **0.98** | 0.14 / 0.044 | **0.505** | 1.23 / **1.12** | 0.16 / **0.029** |
+| C2: pointer + LoRA r=16 | 7.5M | 0.561 | 1.10 / 1.05 | **0.11** / 0.048 | 0.475 | 1.38 / 1.24 | 0.15 / 0.039 |
+| C2: pointer、LLM 凍結 | 1.0M | 0.471 | 2.00 / 1.19 | 0.32 / 0.028 | 0.395 | 2.34 / 1.32 | 0.35 / 0.029 |
+
+順序感度（MMLU 300 問 × 巡回シフト 4 通り、`--mode order`）:
+
+| 方式 | 位置ごとの平均確率 1/2/3/4 | p(correct) の平均絶対差 | argmax 一致 |
+|---|---|---:|---:|
+| B | 0.25 / 0.31 / 0.22 / 0.22 | 0.220 | 48% |
+| C1 slot + LoRA | 0.26 / 0.26 / 0.25 / 0.24 | 0.126 | 55% |
+| C2 pointer + LoRA | 0.20 / 0.25 / 0.32 / 0.23 | 0.164 | 48% |
+
+読み取れること:
+
+1. **decision training は 4,800 例でも効く。** LoRA 併用の head は B より精度が高く（MMLU +2、JMMLU +4 ポイント）、
+   何より raw の確率が最初から使える（ECE 0.41 → 0.11〜0.14、NLL 5.8 → 1.1）。温度を足すと ECE 0.03〜0.05、NLL 0.98 に達し、
+   B + 温度（0.080、1.08）を上回る。JMMLU の ECE 0.029 は Jev の MMLU 0.031 と同水準だが、こちらは in-distribution の温度込み。
+2. **LLM を凍結して新規 head だけ学習すると B より悪い**（MMLU 0.471、−8 ポイント）。hidden state のどこに「選択肢 i の正しさ」が
+   乗っているかを LLM は学習していないので、head だけでは読み出せない。LoRA で表現側を動かすことが必要。温度で ECE は直るが精度は戻らない。
+3. **slot（LM head の文字行で初期化）≥ pointer（ゼロから学習）**。この学習量では B' から始められる slot が有利。
+   pointer は式の上では順序に等変だが、h_i 自体が因果 attention で前の選択肢に依存するため順序効果は残る（argmax 一致 48%）。
+   順序 shuffle で学習した slot は位置 prior がほぼ一様（0.26/0.26/0.25/0.24）になり、一致率も 48% → 55% に上がる。
+4. 英語 MMLU で学習した head は日本語 JMMLU にも転移する（精度・NLL とも改善）。一方 bridge（日本語・読解型・30 問）では
+   pointer + LoRA は 0.833 と B の 0.933 を下回る。学習分布外のタスク種別には注意が要る。
+5. 学習は `results/train/<run>/train_log.jsonl` に step ごとの loss と検証値、`best/`・`last/` に checkpoint が残る。
+   pointer + LoRA の best は step 300（val NLL 1.145）で、その後は過学習気味。
 
 ## 設計メモ
 

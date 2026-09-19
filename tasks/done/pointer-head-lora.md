@@ -1,6 +1,6 @@
 ---
 title: pointer 型 decision head + LoRA を学習し語彙 readout (B) と比較する
-status: pending
+status: done
 priority: P3
 created_at: 2026-09-20T01:50:46+09:00
 depends_on: []
@@ -56,3 +56,31 @@ uv run scripts/eval.py --dataset mmlu --engine pointer --n 1200 --n-val 400
 
 - 学習ステップ数と LoRA rank。MPS での学習時間の上限をどこに置くか（例: 1 設定 1 時間以内）
 - h_i を取る位置（選択肢行末の改行 token か、選択肢テキスト末尾か）
+
+# Result
+
+## Changed
+
+- `jqv/heads.py`: `SlotHead`（LM head の文字行で初期化可）、`PointerHead`（低ランク双線形 + option bias、順序等変）、save/load
+- `jqv/prompt.py`: `suffix_ids_with_spans`（offset mapping で選択肢末尾 token を特定。`suffix_ids` と同一の ids）
+- `jqv/train/data.py`, `jqv/train/trainer.py`: MMLU auxiliary_train + 選択肢 shuffle、LoRA（peft）、CE（+ λ·Brier）、10 step ごとの loss/ETA ログ、100 step ごとの checkpoint と検証、`--resume`
+- `jqv/engine/head.py`: `pointer` / `slot` engine（`head_dir`、model / prompt_hash 検証、adapter を runtime に注入）
+- `scripts/train_head.py`、`scripts/eval.py` と `permutation_test.py` の `--head-dir`
+- `tests/test_heads.py`（順序等変性、slot の mask と roundtrip）、`tests/test_prompt.py`（spans）
+- `README.md`: C 節（設計、結果表、順序感度、結論）
+- `.gitignore`: `results/train/`（adapter は git 管理外）
+
+## Verified
+
+- `uv run pytest`: 全件成功（heads / prompt を含む）
+- 学習 3 本（pointer_lora, slot_lora, pointer_frozen: 各 600 step）が完走。smoke run で `--resume` の再開を確認
+- `eval.py` で MMLU / JMMLU test 800、`permutation_test.py --mode order` で順序感度、`fit_temperature.py` で +T を測定
+
+## Deviations
+
+- Success の「pointer head の順序一致率が B より高い」は満たさなかった（48% で同じ）。理由（h_i の文脈依存）を README に記載。slot は 55% で B を上回る
+- 学習率は smoke run で不安定だったため head 3e-4 / LoRA 5e-5、warmup 50 に下げた
+
+## Remaining
+
+- 学習量（step, LoRA rank）の sweep、pointer の初期化改善、bridge 型（読解・日本語）データの学習
