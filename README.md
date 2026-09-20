@@ -585,7 +585,7 @@ curl -s https://<random>.trycloudflare.com/health                       # calibr
 - Benchmark Heaven はドイツから 1 リクエストずつ呼ぶため、外部の p50 にはネットワーク遅延が乗る（ランキングでは self-hosted に ×2 + 0.15 s の補正が入る）。
   同じ Mac から公開 URL を叩いた実測では、ローカル 0.23〜0.74 s のリクエストがトンネル経由で +0.04〜0.12 s（日本国内の Cloudflare edge 経由）。ドイツからはさらに往復分が乗る。Speed 軸まで競うなら欧州近傍の Linux/CUDA に置く。
 - 提出するのは 32B zero-shot + T=3.0（hard 0.622、Calibration 78.6、p50 0.65 s）。perm_avg は +1.8 pt に対し p50 が 2 倍でスコア上不利。
-- bench request の文面案は `results/public/bench_request.md`。
+- bench request は 2026-09-21 に提出済み: [fstandhartinger/jevbench#6](https://github.com/fstandhartinger/jevbench/issues/6)（endpoint `https://asn-front-mix-develop.trycloudflare.com`、32B zero-shot + T=3.02、リポジトリは非公開のまま）。測定完了の連絡があるまでサーバとトンネルを維持し、完了後に停止する。提出文は `results/public/bench_request_issue.md`。
 
 ## 関連プロジェクト
 
