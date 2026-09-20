@@ -1,0 +1,31 @@
+{
+  "temperature": 1.603851616253672,
+  "meta": {
+    "model": "Qwen/Qwen3-14B",
+    "engine": "slot",
+    "dataset": "jmmlu",
+    "dtype": "torch.bfloat16",
+    "prompt_hash": "4f85a0b34776",
+    "n_val": 400,
+    "choice_counts": [
+      4
+    ],
+    "fitted_at": "2026-09-20T09:46:42+09:00"
+  },
+  "before": {
+    "n": 800,
+    "accuracy": 0.71,
+    "nll": 0.8289160132408142,
+    "brier": 0.420003205537796,
+    "ece": 0.1336699291318655,
+    "mean_confidence": 0.8436698913574219
+  },
+  "after": {
+    "n": 800,
+    "accuracy": 0.71,
+    "nll": 0.7237942218780518,
+    "brier": 0.3878045380115509,
+    "ece": 0.049544973894953714,
+    "mean_confidence": 0.7476234436035156
+  }
+}

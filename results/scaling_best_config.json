@@ -1,0 +1,9 @@
+{
+  "model": "Qwen/Qwen3-14B",
+  "head": "slot",
+  "lora_rank": 16,
+  "brier_weight": 0.0,
+  "run": "qwen3-14b_slot_brier0",
+  "criterion": "min MMLU val NLL (0.675 vs 0.692/0.693/0.720); test differences within noise",
+  "train_args": "--head slot --lora-rank 16 --steps 600 --batch-size 8 --grad-accum 2 --brier-weight 0"
+}

@@ -1,6 +1,6 @@
 ---
 title: Qwen3-14B で slot+LoRA の λ sweep を 1.7B と同一条件で行い最良設定を決める
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-20T05:14:25+09:00
 depends_on:
@@ -60,3 +60,30 @@ uv run scripts/scaling_table.py
 # Open Questions
 
 - 14B の 1 run が 3 時間を大きく超える場合、λ を {0, 1} に絞るかどうか（ユーザー判断。既定は 4 水準すべて実行）
+
+# Result
+
+## Changed
+
+- `results/train/qwen3-14b_slot_brier{0,05,1,2}/`（best / last checkpoint、train_log.jsonl、final.json。git 管理外）
+- `results/{mmlu,jmmlu,bridge}_slot_qwen3-14b_qwen3-14b_slot_brier*.{json,npz}`、`*_temperature.json`、`*_calibration.json`、`compare_{mmlu,jmmlu}_qwen3-14b_lora.json`
+- `results/scaling_best_config.json`: 32B 用の設定（λ=0、根拠付き）
+- `scripts/scaling_table.md` / `results/scaling_table.json` を再生成
+- `README.md`: 「14B の slot + LoRA λ sweep」節と結論、スケーリング表の更新
+
+## Verified
+
+- 学習 4 本（各 600 step、`--grad-accum 2`）完走。λ=1 の run で 20 step → `--resume` → 600 step の再開を確認
+- 各 best を MMLU / JMMLU test 800 と bridge で評価、`fit_temperature.py`、`compare_runs.py`（zero-shot / perm_avg / 4 λ の対応比較）
+- `--grad-accum` / `--grad-checkpointing` は 1.7B の 12 step smoke run で動作確認（前タスク）
+
+## Deviations
+
+- Success の「最良 λ を根拠付きで」は val NLL 最小の λ=0 としたが、test の差はすべてノイズ範囲であることを明記
+- `compare_runs.py` のラベルに「=」を含めるとパースに失敗するため、ラベル表記を変えて再実行した（スクリプト側は未修正）
+- transfer_temperature（slot run 版）は実行していない（B の転移表は前タスクで取得済み）
+
+## Remaining
+
+- LoRA + perm_avg の組合せ評価（32B タスクで slot の perm_avg 評価を入れる）
+- 学習量（step 数、データ）を増やした場合に 14B で精度が動くかは未検証

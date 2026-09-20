@@ -1,0 +1,13 @@
+{
+  "temperature": 1.5844715236478704,
+  "model": "Qwen/Qwen3-14B",
+  "engine": "slot",
+  "dataset": "jmmlu",
+  "dtype": "torch.bfloat16",
+  "prompt_hash": "4f85a0b34776",
+  "n_val": 400,
+  "choice_counts": [
+    4
+  ],
+  "fitted_at": "2026-09-20T12:04:05+09:00"
+}

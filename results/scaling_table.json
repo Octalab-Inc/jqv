@@ -34,11 +34,11 @@
       "permavg_ece_raw": 0.11281695347279314,
       "permavg_ece_T": 0.04692035377025605,
       "mmlu_acc_shots5_permavg": 0.7825,
-      "slot_run": null,
-      "mmlu_acc_slot": null,
-      "jmmlu_acc_slot": null,
-      "slot_ece_raw": null,
-      "slot_ece_T": null,
+      "slot_run": "qwen3-14b_slot_brier0",
+      "mmlu_acc_slot": 0.7575,
+      "jmmlu_acc_slot": 0.71125,
+      "slot_ece_raw": 0.1138030376657844,
+      "slot_ece_T": 0.04491425618529321,
       "packed_qps_s2k_q100": 9.267009546756116,
       "packed_permavg_qps_s2k_q100": 4.432355629425121
     }

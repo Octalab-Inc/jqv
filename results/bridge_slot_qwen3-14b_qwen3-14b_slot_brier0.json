@@ -1,0 +1,24 @@
+{
+  "n": 30,
+  "accuracy": 1.0,
+  "nll": 0.0021945915650576353,
+  "brier": 6.834619853179902e-05,
+  "ece": 0.002176940441131592,
+  "mean_confidence": 0.9978230595588684,
+  "engine": "slot",
+  "model": "Qwen/Qwen3-14B",
+  "dtype": "torch.bfloat16",
+  "dataset": "bridge",
+  "seconds": 6.067605972290039,
+  "questions_per_sec": 4.944289417771369,
+  "prompt_hash": "4f85a0b34776",
+  "n_val": 0,
+  "choice_counts": [
+    2,
+    3,
+    4
+  ],
+  "shots": 0,
+  "shots_mode": null,
+  "perm_avg": false
+}
