@@ -518,23 +518,25 @@ typed decision を choice / noul / score の 3 型で問う。public 分は easy
 
 jqv は TypeSafe 互換の `POST /v1/systemone`（`jqv/systemone.py`）を実装し、ハーネスの `typesafe` adapter を改変なしで使った
 （`scripts/jevbench_run.py`、1 リクエストずつ、ローカル MPS、ハーネス commit 7ce310c）。JSON state（public の 35 件）は整形 JSON テキストとして与える。
-温度は MMLU val で学習した T をそのまま転用し、argmax を変えないので精度は同一、ECE だけを事後計算した（`scripts/jevbench_summary.py`）。
+温度は MMLU val で学習した T をそのまま転用し、**サーバが校正済み確率を返す構成**（`jevbench_run.py --temperature-file`）で 9 設定を
+ハーネスに測らせた。生の確率を返す構成の 9 設定も走らせてあり（`results/jevbench/<label>/`、`_T` なし）、精度は両者で同一、
+ハーネスが測った校正済み ECE は生確率に T を事後適用した値と一致する（`results/jevbench_summary.md` に両方の行がある）。
 
-| run | easy | standard | hard | Intelligence (public tiers) | hard ECE raw / +T (T) | Calibration raw / +T (ECE only) | raw p50 s |
-|---|---:|---:|---:|---:|---|---|---:|
-| qwen3-1.7b_packed | 1.000 | 0.625 | 0.423 | 61.4 | 0.542 / 0.157 (12.0) | 0.0 / 68.6 | 0.04 |
-| qwen3-1.7b_permavg | 1.000 | 0.708 | 0.432 | 65.0 | 0.405 / 0.142 (8.8) | 19.1 / 71.5 | 0.07 |
-| qwen3-1.7b_slot | 1.000 | 0.681 | 0.414 | 63.2 | 0.256 / 0.146 (1.8) | 48.9 / 70.9 | 0.05 |
-| qwen3-14b_packed | 1.000 | 0.875 | 0.550 | 76.4 | 0.378 / 0.126 (5.1) | 24.5 / 74.9 | 0.27 |
-| qwen3-14b_permavg | 1.000 | 0.889 | 0.568 | 77.7 | 0.335 / 0.185 (3.9) | 33.1 / 62.9 | 0.59 |
-| qwen3-14b_slot | 1.000 | 0.889 | 0.586 | 78.4 | 0.221 / 0.193 (1.6) | 55.7 / 61.3 | 0.33 |
-| qwen3-32b_packed | 1.000 | 0.958 | 0.622 | 82.6 | 0.274 / 0.107 (3.0) | 45.2 / 78.6 | 0.68 |
-| qwen3-32b_permavg | 1.000 | 0.944 | 0.640 | 82.8 | 0.233 / 0.115 (2.4) | 53.4 / 77.0 | 1.33 |
-| qwen3-32b_slot | 1.000 | 0.944 | 0.622 | 82.1 | 0.229 / 0.132 (1.7) | 54.2 / 73.6 | 0.70 |
-| Jev 1.13 (TypeSafe) (Benchmark Heaven v1.2.5, 534 決定) | - | - | 0.741 | 90.4 | - | 82.7 | 0.65 |
-| SemIf Qwen3.5-4B (Benchmark Heaven v1.2.5, 534 決定) | - | - | 0.595 | 85.9 | - | 72.6 | 0.20 |
-| openjev-sglang Qwen3.6-35B-A3B (Benchmark Heaven v1.2.5, 534 決定) | - | - | 0.714 | 88.9 | - | - | 0.68 |
-| GPT-5.6 Luna (low) (Benchmark Heaven v1.2.5, 534 決定) | - | - | 0.945 | 96.8 | - | 89.8 | 0.97 |
+| run（サーバが校正済み確率を返す構成） | easy 48 | standard 72 | hard 111 | Intelligence（public 3 tier） | hard ECE | Calibration（ECE のみ） | 生 p50 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| qwen3-1.7b zero-shot (T=12.0) | 1.000 | 0.625 | **0.423** | 61.4 | 0.151 | 69.8 | 0.04 s |
+| qwen3-1.7b perm_avg (T=8.8) | 1.000 | 0.708 | **0.432** | 65.0 | 0.139 | 72.3 | 0.07 s |
+| qwen3-1.7b slot + LoRA (T=1.8) | 1.000 | 0.681 | **0.414** | 63.2 | 0.146 | 70.9 | 0.05 s |
+| qwen3-14b zero-shot (T=5.1) | 1.000 | 0.875 | **0.550** | 76.4 | 0.126 | 74.9 | 0.31 s |
+| qwen3-14b perm_avg (T=3.9) | 1.000 | 0.889 | **0.568** | 77.7 | 0.185 | 62.9 | 0.53 s |
+| qwen3-14b slot + LoRA (T=1.6) | 1.000 | 0.889 | **0.586** | 78.4 | 0.193 | 61.3 | 0.30 s |
+| qwen3-32b zero-shot (T=3.0) | 1.000 | 0.958 | **0.622** | 82.6 | 0.107 | 78.6 | 0.65 s |
+| qwen3-32b perm_avg (T=2.4) | 1.000 | 0.944 | **0.640** | 82.8 | 0.115 | 77.0 | 1.37 s |
+| qwen3-32b slot + LoRA (T=1.7) | 1.000 | 0.944 | **0.622** | 82.1 | 0.132 | 73.6 | 0.80 s |
+| Jev 1.13（Benchmark Heaven v1.2.5、534 決定、held-out 込み） | - | - | **0.741** | 90.4 | - | 82.7（ECE + TVD） | 0.65 s |
+| SemIf Qwen3.5-4B（同） | - | - | 0.595 | 85.9 | - | 72.6 | 0.20 s |
+| openjev-sglang Qwen3.6-35B-A3B（同） | - | - | 0.714 | 88.9 | - | - | 0.68 s |
+| GPT-5.6 Luna low（同） | - | - | 0.945 | 96.8 | - | 89.8 | 0.97 s |
 
 Intelligence は public 3 tier の重み付き精度（easy 14 / standard 28 / hard 30、judge 欠損分は正規化）で、リーダーボードの値（judge + held-out 込み）とは
 条件が異なる。Calibration は hard tier の top-label ECE のみ（分布正解 20 問は非公開）。latency は補正なしの生値
@@ -554,8 +556,8 @@ long_policy 9/19（perm_avg で 11/19）、multi_hop 10/18、temporal_numeric 5/
    Benchmark Heaven の topic 別で Jev が open model に大きく差をつけるのも rules / policy / finance で、Jev の post-training が
    「規則を読んで typed decision をする」方向に効いている可能性と整合する。逆に adversarial / trap / routing は 32B で満点。
 4. **生の確率のままでは Calibration 軸が壊滅する。** hard の生 ECE は 32B でも 0.27（1.7B 0.54）で、Calibration 換算 45（1.7B は 0）。
-   MMLU val の T を転用するだけで ECE 0.11、Calibration 79（Jev 82.7、SemIf 72.6）まで回復する。Decision API は校正済み確率を
-   返して初めて評価に乗る。MMLU → JevBench hard への温度転移は**部分的**: ECE は 0.274 → 0.107 と大きく改善するが、MMLU 内の 0.023 には遠く、転移節で定義した基準（対角 + 0.02 以内）は満たさない。MMLU ↔ JMMLU（強く転移）、MMLU → JevBench hard（部分転移）、MMLU → bridge（逆効果）という 3 段階の distribution shift が見える。
+   MMLU val の T をサーバに載せて返すだけで、ハーネス計測の ECE は 0.107、Calibration 78.6（Jev 82.7、SemIf 72.6）まで回復する。
+   Decision API は校正済み確率を返して初めて評価に乗る。MMLU → JevBench hard への温度転移は**部分的**: ECE は 0.274 → 0.107 と大きく改善するが、MMLU 内の 0.023 には遠く、転移節で定義した基準（対角 + 0.02 以内）は満たさない。MMLU ↔ JMMLU（強く転移）、MMLU → JevBench hard（部分転移）、MMLU → bridge（逆効果）という 3 段階の distribution shift が見える。
 5. **decision training（slot + LoRA）はここでも効かない。** 32B で hard 62.2%（zero-shot と同じ）、14B で 58.6%（+3.6）。
    perm_avg は 32B hard で +1.8。
 6. **速度**: 32B の生 p50 は 0.68 s（Jev 0.65 s、ただし Jev は本番 API）。Benchmark Heaven の補正（×2 + 0.15 s）を当てると 1.5 s 相当。

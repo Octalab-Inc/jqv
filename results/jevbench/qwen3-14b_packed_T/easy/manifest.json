@@ -1,0 +1,21 @@
+{
+  "adapter": "typesafe",
+  "charged_usd": 0.0,
+  "cost_basis": "local_mps_no_billing",
+  "dataset_hash": "3cbd0e951fa8059741955ef2bd3273b0bb60aecae8f4a68b89872f55f7376b3d",
+  "delay_s": 0.0,
+  "endpoint": "http://127.0.0.1:8010",
+  "finished_utc": "2026-09-20T19:05:45.419182+00:00",
+  "key_env_used": false,
+  "n_attempted": 48,
+  "n_planned": 48,
+  "price_input_per_m": null,
+  "price_output_per_m": null,
+  "request_options": {},
+  "requested_model": "qwen3-14b_packed_T",
+  "resolved_models": [
+    "qwen3-14b_packed_T"
+  ],
+  "run_label": "qwen3-14b_packed_T",
+  "started_utc": "2026-09-20T19:05:39.254955+00:00"
+}

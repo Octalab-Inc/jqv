@@ -5,7 +5,7 @@
   "dataset_hash": "3cbd0e951fa8059741955ef2bd3273b0bb60aecae8f4a68b89872f55f7376b3d",
   "delay_s": 0.0,
   "endpoint": "http://127.0.0.1:8010",
-  "finished_utc": "2026-09-20T19:02:46.804697+00:00",
+  "finished_utc": "2026-09-20T19:03:21.256696+00:00",
   "key_env_used": false,
   "n_attempted": 48,
   "n_planned": 48,
@@ -17,5 +17,5 @@
     "qwen3-1.7b_packed_T"
   ],
   "run_label": "qwen3-1.7b_packed_T",
-  "started_utc": "2026-09-20T19:02:45.322295+00:00"
+  "started_utc": "2026-09-20T19:03:19.795258+00:00"
 }
