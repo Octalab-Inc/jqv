@@ -1,0 +1,21 @@
+{"event": "cap", "cap_usd": 15.0, "ts": 1789939430.306697}
+{"event": "reserve", "reservation_id": "c8b40efc5fa04d2a9c6f9a272fab1113", "reserved_usd": 0.0, "ts": 1789939430.306794, "meta": {"task_id": "easy-intent-00", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "c8b40efc5fa04d2a9c6f9a272fab1113", "charged_usd": 0.0, "ts": 1789939431.243307, "meta": {"task_id": "easy-intent-00", "basis": "public_quick_tunnel"}}
+{"event": "reserve", "reservation_id": "9f59ba4c520447299e76dfc3b8398efa", "reserved_usd": 0.0, "ts": 1789939431.2435021, "meta": {"task_id": "easy-intent-01", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "9f59ba4c520447299e76dfc3b8398efa", "charged_usd": 0.0, "ts": 1789939431.541373, "meta": {"task_id": "easy-intent-01", "basis": "public_quick_tunnel"}}
+{"event": "reserve", "reservation_id": "61cda84b908f4c768b7792ec6d424a90", "reserved_usd": 0.0, "ts": 1789939431.541779, "meta": {"task_id": "easy-intent-02", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "61cda84b908f4c768b7792ec6d424a90", "charged_usd": 0.0, "ts": 1789939431.844533, "meta": {"task_id": "easy-intent-02", "basis": "public_quick_tunnel"}}
+{"event": "reserve", "reservation_id": "5fa2f1ef9f85450d97ae6edd0b0d0f9d", "reserved_usd": 0.0, "ts": 1789939431.844825, "meta": {"task_id": "easy-intent-03", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "5fa2f1ef9f85450d97ae6edd0b0d0f9d", "charged_usd": 0.0, "ts": 1789939432.1769679, "meta": {"task_id": "easy-intent-03", "basis": "public_quick_tunnel"}}
+{"event": "reserve", "reservation_id": "2b40c7a7ec8a4b2ea31b73b4a61c2ea2", "reserved_usd": 0.0, "ts": 1789939432.1773179, "meta": {"task_id": "easy-intent-04", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "2b40c7a7ec8a4b2ea31b73b4a61c2ea2", "charged_usd": 0.0, "ts": 1789939432.489863, "meta": {"task_id": "easy-intent-04", "basis": "public_quick_tunnel"}}
+{"event": "reserve", "reservation_id": "d183e2116094413cae0bb08f537abb5f", "reserved_usd": 0.0, "ts": 1789939432.4901812, "meta": {"task_id": "easy-intent-05", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "d183e2116094413cae0bb08f537abb5f", "charged_usd": 0.0, "ts": 1789939432.788952, "meta": {"task_id": "easy-intent-05", "basis": "public_quick_tunnel"}}
+{"event": "reserve", "reservation_id": "532a3966c69c4165bdef829f5a565de1", "reserved_usd": 0.0, "ts": 1789939432.789275, "meta": {"task_id": "easy-intent-06", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "532a3966c69c4165bdef829f5a565de1", "charged_usd": 0.0, "ts": 1789939433.116663, "meta": {"task_id": "easy-intent-06", "basis": "public_quick_tunnel"}}
+{"event": "reserve", "reservation_id": "62d84074bc1741b79c89f9175fe7654e", "reserved_usd": 0.0, "ts": 1789939433.117019, "meta": {"task_id": "easy-intent-07", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "62d84074bc1741b79c89f9175fe7654e", "charged_usd": 0.0, "ts": 1789939433.4086301, "meta": {"task_id": "easy-intent-07", "basis": "public_quick_tunnel"}}
+{"event": "reserve", "reservation_id": "c6db284021924f8c968ddcc429f3bab2", "reserved_usd": 0.0, "ts": 1789939433.40899, "meta": {"task_id": "easy-intent-08", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "c6db284021924f8c968ddcc429f3bab2", "charged_usd": 0.0, "ts": 1789939433.704575, "meta": {"task_id": "easy-intent-08", "basis": "public_quick_tunnel"}}
+{"event": "reserve", "reservation_id": "8ac5834585714e86a083fc3643a06a57", "reserved_usd": 0.0, "ts": 1789939433.704936, "meta": {"task_id": "easy-intent-09", "adapter": "typesafe"}}
+{"event": "settle", "reservation_id": "8ac5834585714e86a083fc3643a06a57", "charged_usd": 0.0, "ts": 1789939434.006025, "meta": {"task_id": "easy-intent-09", "basis": "public_quick_tunnel"}}

@@ -566,6 +566,27 @@ long_policy 9/19（perm_avg で 11/19）、multi_hop 10/18、temporal_numeric 5/
 但し書き: public 231 問のみ（judge tier と分布正解問題なし）、英語のみ、hard は Claude Opus 5 / GPT-5.6 Sol 作成の pilot。
 Jev 行の数値は Benchmark Heaven の測定値（全 534 問）を引用したもので、同一問題での対応比較ではない。
 
+## 公開 endpoint（Cloudflare Quick Tunnel）
+
+held-out 303 問と judge tier は Benchmark Heaven が bench request で測る。jqv の `/v1/systemone` は TypeSafe 互換なので、
+HTTPS で公開すればハーネスの `typesafe` adapter（`--key-env ''`）からそのまま測定対象になる。一時公開の手順:
+
+```bash
+brew install cloudflared
+caffeinate -dimsu &                                                    # 測定中はスリープさせない
+JQV_MODEL=Qwen/Qwen3-32B JQV_ENGINE=packed \
+JQV_TEMPERATURE_FILE=results/mmlu_packed_qwen3-32b_temperature.json \
+uv run uvicorn jqv.server:app --host 127.0.0.1 --port 8000 &          # 校正済み確率を返す構成
+cloudflared tunnel --url http://localhost:8000                          # https://<random>.trycloudflare.com が発行される
+curl -s https://<random>.trycloudflare.com/health                       # calibration.temperature が出ることを確認
+```
+
+- Quick Tunnel はアカウント・DNS 設定不要、URL はランダムで `cloudflared` を止めると消える。公開中は URL を知る誰でも叩けるので、測定後すぐ停止する。
+- Benchmark Heaven はドイツから 1 リクエストずつ呼ぶため、外部の p50 にはネットワーク遅延が乗る（ランキングでは self-hosted に ×2 + 0.15 s の補正が入る）。
+  同じ Mac から公開 URL を叩いた実測では、ローカル 0.23〜0.74 s のリクエストがトンネル経由で +0.04〜0.12 s（日本国内の Cloudflare edge 経由）。ドイツからはさらに往復分が乗る。Speed 軸まで競うなら欧州近傍の Linux/CUDA に置く。
+- 提出するのは 32B zero-shot + T=3.0（hard 0.622、Calibration 78.6、p50 0.65 s）。perm_avg は +1.8 pt に対し p50 が 2 倍でスコア上不利。
+- bench request の文面案は `results/public/bench_request.md`。
+
 ## 関連プロジェクト
 
 同じ仮説（生成せず選択肢 token の logits を直接読む、shared state を 1 回 prefill する、学習 head、Brier 学習、shared-prefix attention）に

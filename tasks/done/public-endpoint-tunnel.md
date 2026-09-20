@@ -1,6 +1,6 @@
 ---
 title: jqv 32B の TypeSafe 互換 endpoint を Cloudflare Quick Tunnel で一時公開し、JevBench held-out 評価の bench request に備える
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-21T06:21:34+09:00
 depends_on: []
@@ -47,3 +47,26 @@ curl -s https://<random>.trycloudflare.com/v1/systemone -H 'Content-Type: applic
 # Open Questions
 
 - Benchmark Heaven への bench request をいつ出すか（Quick Tunnel は停止すると URL が消えるため、測定が終わるまで維持が必要）
+
+# Result
+
+## Changed
+
+- `README.md`: 「公開 endpoint（Cloudflare Quick Tunnel）」節（手順、注意点、実測遅延、提出設定）
+- `results/public/`: `tunnel_url.txt`、`bench_request.md`（提出文面案）、`server.log`、`cloudflared.log`、`harness_*/`（公開 URL 経由のハーネス実行結果）
+- 環境: `brew install cloudflared`（2026.9.1）。起動中: `caffeinate -dimsu`、`uvicorn jqv.server:app --port 8000`（32B、T=3.02）、`cloudflared tunnel --url http://localhost:8000`
+
+## Verified
+
+- 公開 URL https://asn-front-mix-develop.trycloudflare.com で `/health`（calibration.temperature=3.02）と `/v1/systemone` が応答。ローカルと同じ質問で同じ確率（bf16 差 0.001）
+- 遅延: 同一リクエストでローカル 0.23〜0.74 s、トンネル経由 +0.04〜0.12 s（日本国内から）
+- ハーネス `typesafe` adapter を公開 URL に向けて easy 10 問: 10/10、失敗 0、p50 0.30 s、operational_success 1.0
+
+## Deviations
+
+- Benchmark Heaven への bench request は未提出（外部向け行為のためユーザー確認待ち）。Quick Tunnel の URL は `cloudflared` 停止で消えるので、提出から測定完了までサーバとトンネルを維持する必要がある
+- README に一度未計測の遅延値を書いてしまい、計測値で置き換えた
+
+## Remaining
+
+- bench request の提出と、測定完了後の停止（`pkill -f "cloudflared tunnel"; pkill -f "uvicorn jqv.server"; pkill caffeinate`）
