@@ -1,0 +1,152 @@
+{
+ "key": "jqv",
+ "display": "jqv (Qwen3-32B zero-shot)",
+ "class": "jev-rebuild",
+ "open": "yes",
+ "author": "hjmurmur",
+ "repo": "https://github.com/fstandhartinger/jevbench/issues/6",
+ "licence": "Apache-2.0 (Qwen3-32B weights); serving code not public",
+ "underlying": "Qwen/Qwen3-32B, bf16, read as a direct-logit classifier (no fine-tuning)",
+ "has_distribution": true,
+ "probability_source": [
+  "native"
+ ],
+ "tiers": {
+  "easy": 1.0,
+  "standard": 0.9583333333333334,
+  "judge": 0.9246575342465754,
+  "hard": 0.31363636363636366
+ },
+ "hard": {
+  "run": "runs/jqv--hardpub (job jevbench-add-requests-20260919, run 3)",
+  "n_items": 220,
+  "n_ok": 111,
+  "n_attempted": 111,
+  "coverage": 0.5045454545454545,
+  "success_rate": 1.0,
+  "accuracy": 0.31363636363636366,
+  "by_family": {
+   "adversarial": {
+    "correct": 6,
+    "n": 12,
+    "accuracy": 0.5
+   },
+   "ambiguous": {
+    "correct": 5,
+    "n": 14,
+    "accuracy": 0.35714285714285715
+   },
+   "judge_hard": {
+    "correct": 14,
+    "n": 33,
+    "accuracy": 0.42424242424242425
+   },
+   "long_policy": {
+    "correct": 9,
+    "n": 38,
+    "accuracy": 0.23684210526315788
+   },
+   "multi_hop": {
+    "correct": 10,
+    "n": 35,
+    "accuracy": 0.2857142857142857
+   },
+   "probability": {
+    "correct": 4,
+    "n": 20,
+    "accuracy": 0.2
+   },
+   "routing_hard": {
+    "correct": 5,
+    "n": 10,
+    "accuracy": 0.5
+   },
+   "temporal_numeric": {
+    "correct": 5,
+    "n": 30,
+    "accuracy": 0.16666666666666666
+   },
+   "tradeoff": {
+    "correct": 3,
+    "n": 12,
+    "accuracy": 0.25
+   },
+   "trap": {
+    "correct": 8,
+    "n": 16,
+    "accuracy": 0.5
+   }
+  },
+  "has_distribution": true,
+  "brier_mean": 0.5147925300255541,
+  "ece": 0.10681929977963095,
+  "probability_fidelity": 71.08277680490912,
+  "calibration_score": 74.85945842449146,
+  "onehot": {
+   "ece": 0.3783783783783784,
+   "probability_fidelity": 44.152999999999984,
+   "calibration_score": 34.23866216216215
+  },
+  "latency_p50_s": 1.5214610695838928,
+  "latency_p95_s": 7.973937343806028,
+  "mean_input_tokens": 1234.3873873873874,
+  "mean_output_tokens": 0.0,
+  "charged_usd": 0.0
+ },
+ "speed_block": {
+  "measured_where": "from a Hetzner server in Germany, network included",
+  "hardware": null,
+  "n": 242,
+  "p50_s": 0.9228645488619804,
+  "p95_s": 4.707451733201738,
+  "run": "serial 242-decision standard+judge run"
+ },
+ "cost": {
+  "kind": "estimate",
+  "usd_per_1000": 0.037407340823970035,
+  "usd_per_1000_v11_tiers": 0.02870751592356688,
+  "usd_per_1000_hard": 0.04982436363636363,
+  "basis_v11": "ESTIMATE: hosted-provider price, OpenRouter qwen/qwen3-32b list price (read 2026-09-20) list price $0.08/M in, $0.0/M out (the exact base model this system reads logits from; nothing is generated) x 359 input and 0 output tokens per decision (input tokens measured (the system's own count))",
+  "basis_hard": "ESTIMATE: OpenRouter qwen/qwen3-32b list price (read 2026-09-20) $0.08/M in, $0.0/M out x 623 in / 0 out tokens per hard decision",
+  "basis_final": "ESTIMATE: hosted-provider price, OpenRouter qwen/qwen3-32b list price (read 2026-09-20) list price $0.08/M in, $0.0/M out (the exact base model this system reads logits from; nothing is generated) x 359 input and 0 output tokens per decision (input tokens measured (the system's own count))",
+  "self_host_sensitivity": null
+ },
+ "calibration": {
+  "score": 74.85945842449146,
+  "score_label_only_as_onehot": null,
+  "ece_hard": 0.10681929977963095,
+  "probability_fidelity": 71.08277680490912,
+  "brier_hard": 0.5147925300255541,
+  "brier_standard_judge_v11": 0.13859219372161885
+ },
+ "partial": true,
+ "endpoint_condition": "author-hosted endpoint (Cloudflare tunnel to the submitter's Apple M5 Max in Japan) — not a production service",
+ "note": "public endpoint, Qwen/Qwen3-32B bf16 on Apple M5 Max (MPS), packed engine, prompt_hash 4f85a0b34776, temperature 3.0225814579771493 fitted on 400 MMLU validation items",
+ "footnote": "A stock Qwen3-32B with no decision training: the state is prefilled once, each question is an isolated branch and the answer is read from the option-letter logits, with one fitted temperature (3.02, 400 MMLU validation items). Partial on purpose: the endpoint is the submitter's own machine, and this run stopped sending held-out items to an endpoint a submitter operates. The easy and standard/judge tiers had already run in full when that was decided and do contain their held-out items; the 109 held-out hard items were never sent and count as unanswered, so the row covers 425 of 534 decisions and is not ranked. On the 111 public hard items it answered 62.2 % correctly, and it reproduced the submitter's own public numbers exactly (easy 1.000, standard 0.958, hard 0.622). Measured latency includes the network path from Germany to Japan and gets the ×2 non-production adjustment; cost is the base model's public per-token tariff, not free.",
+ "tier_blocks_v11": {
+  "easy": {
+   "n_planned": 72,
+   "n_attempted": 72,
+   "accuracy": 1.0,
+   "operational_success": 1.0,
+   "brier_mean": 0.0005395362008721165,
+   "first_request_s": 1.2309610769152641
+  },
+  "standard": {
+   "n_planned": 96,
+   "n_attempted": 96,
+   "accuracy": 0.9583333333333334,
+   "operational_success": 1.0,
+   "brier_mean": 0.0982045766937631,
+   "first_request_s": 0.6205120086669922
+  },
+  "judge": {
+   "n_planned": 146,
+   "n_attempted": 146,
+   "accuracy": 0.9246575342465754,
+   "operational_success": 1.0,
+   "brier_mean": 0.1651484350550034,
+   "first_request_s": 1.074015960097313
+  }
+ }
+}

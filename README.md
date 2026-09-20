@@ -21,6 +21,9 @@ POST /decision
    JevBench hard 0.423 → 0.550 → 0.622。4,800 例の LoRA は 14B 以上をほぼ改善せず、Jev との差は MMLU でも JevBench hard でも約 10〜12 ポイント残る。
 4. **Calibration の「魔法」のかなりの部分は scalar correction でも再現できるが、domain shift は未解決。** 32B は MMLU で ECE 0.023（Jev の報告値 0.031）まで
    行く一方、同じ温度は JMMLU には転移し、JevBench hard には部分的（0.274 → 0.107）、bridge には逆効果と、タスクによって最適 scale が異なる。
+5. **外部測定でも public の数値は再現され、Jev との差は縮まらない。** Benchmark Heaven（JevBench v1.2.7）は 32B zero-shot を
+   easy 1.000 / standard 0.958 / judge 0.925 / hard public 0.622、Calibration 74.9、Score 67.2 と測定した（partial row、順位なし）。
+   held-out hard 109 問は「提出者が運用する endpoint には送らない」方針で未測定。順位付きにするには serving code の公開か本番 endpoint が要る。
 
 ## 何を作ったか
 
@@ -566,6 +569,42 @@ long_policy 9/19（perm_avg で 11/19）、multi_hop 10/18、temporal_numeric 5/
 但し書き: public 231 問のみ（judge tier と分布正解問題なし）、英語のみ、hard は Claude Opus 5 / GPT-5.6 Sol 作成の pilot。
 Jev 行の数値は Benchmark Heaven の測定値（全 534 問）を引用したもので、同一問題での対応比較ではない。
 
+### Benchmark Heaven による測定（JevBench v1.2.7、2026-09-21）
+
+上の公開 endpoint を bench request（[jevbench#6](https://github.com/fstandhartinger/jevbench/issues/6)）で提出し、Benchmark Heaven がドイツから
+`typesafe` adapter 無改変・1 リクエストずつで測定した。結果は [JevBench v1.2.7](https://github.com/fstandhartinger/jevbench/blob/v1.2.7/RESULTS-v1.2.md) と
+[benchmarkheaven.com/jev-models](https://benchmarkheaven.com/jev-models) に **partial row（表示はされるが順位なし）** として掲載された。
+測定条件と価格基準は実行前にコミットされた [`docs/v1.2-additions-run3.md`](https://github.com/fstandhartinger/jevbench/blob/v1.2.7/docs/v1.2-additions-run3.md) にある
+（公開された行の JSON と合わせてコピーを `results/jevbench/published_v1.2.7/` に置いた。maintainer のコメント全文は `results/public/jevbench_issue6_comments.md`）。
+
+| 項目 | Benchmark Heaven の測定値 | 自前のハーネス測定（public のみ） |
+|---|---:|---:|
+| easy（72 問、held-out 込み） | 72/72 = 1.000 | 1.000（48 問） |
+| standard（96 問、held-out 込み） | 92/96 = 0.958 | 0.958（72 問） |
+| judge（146 問、非公開） | 135/146 = 0.925 | 未測定 |
+| hard public（111 問） | 69/111 = 0.622 | 0.622 |
+| hard held-out（109 問） | 送信されず、未回答扱い | 非公開 |
+| hard tier（220 問として集計） | 0.314 | - |
+| hard ECE / Brier | 0.107 / 0.515 | 0.107 / - |
+| Calibration 軸 | 74.9（ECE に加えて probability fidelity 71.1） | 78.6（ECE のみ） |
+| p50 / p95（standard + judge、ドイツから、生値） | 0.92 s / 4.71 s | 0.65 s（ローカル） |
+| Speed 軸 | 67.6（self-hosted 補正 ×2 で p50 1.85 s 相当） | - |
+| Cost 軸 | 52.8（$0.0374 / 1,000 決定、OpenRouter `qwen/qwen3-32b` の入力単価で推定） | - |
+| JevBench Score | **67.2**（Intelligence 76.1、順位なし） | - |
+
+読み取れること:
+
+1. **public の自己測定値は完全に再現された**（easy 1.000、standard 0.958、hard 0.622）。サーバが校正済み確率を返す構成、prompt hash、温度は
+   `/health` の応答で先方に確認されている。
+2. **judge tier（非公開 146 問）は 92.5%。** 同じ tier で Jev 1.13 は 94.5%、classifier.dev（Jev のバッチ）は 97.3%。standard と同様に backbone 差が小さい領域。
+3. **hard は held-out 109 問が送られず、row は 534 決定中 425 で順位なし。** 測定の途中で「提出者が運用する endpoint には held-out を送らない」方針が
+   採られたため（easy / standard / judge は方針決定前に送信済み）。順位付きの row にするには公開 weights か serving code、または本番 endpoint が要る
+   （maintainer のコメント）。現状はリポジトリ非公開のため partial のまま。
+4. **Calibration 74.9 は ECE だけの自己測定 78.6 より低い。** Benchmark Heaven は分布正解問題の probability fidelity（71.1）も含める。
+   Jev 82.7 との差は主にここに出る。
+5. **Speed と Cost は評価条件の影響が大きい。** 生 p50 0.92 s はローカル 0.65 s に日独往復が乗った値で、self-hosted 補正 ×2 で 1.85 s 相当。
+   Cost は無料 endpoint でも base model の公開単価で見積もられる。Speed 軸まで競うなら欧州近傍の CUDA サーバに置く。
+
 ## 公開 endpoint（Cloudflare Quick Tunnel）
 
 held-out 303 問と judge tier は Benchmark Heaven が bench request で測る。jqv の `/v1/systemone` は TypeSafe 互換なので、
@@ -585,7 +624,8 @@ curl -s https://<random>.trycloudflare.com/health                       # calibr
 - Benchmark Heaven はドイツから 1 リクエストずつ呼ぶため、外部の p50 にはネットワーク遅延が乗る（ランキングでは self-hosted に ×2 + 0.15 s の補正が入る）。
   同じ Mac から公開 URL を叩いた実測では、ローカル 0.23〜0.74 s のリクエストがトンネル経由で +0.04〜0.12 s（日本国内の Cloudflare edge 経由）。ドイツからはさらに往復分が乗る。Speed 軸まで競うなら欧州近傍の Linux/CUDA に置く。
 - 提出するのは 32B zero-shot + T=3.0（hard 0.622、Calibration 78.6、p50 0.65 s）。perm_avg は +1.8 pt に対し p50 が 2 倍でスコア上不利。
-- bench request は 2026-09-21 に提出済み: [fstandhartinger/jevbench#6](https://github.com/fstandhartinger/jevbench/issues/6)（endpoint `https://asn-front-mix-develop.trycloudflare.com`、32B zero-shot + T=3.02、リポジトリは非公開のまま）。測定完了の連絡があるまでサーバとトンネルを維持し、完了後に停止する。提出文は `results/public/bench_request_issue.md`。
+- bench request は 2026-09-21 に提出し（[fstandhartinger/jevbench#6](https://github.com/fstandhartinger/jevbench/issues/6)、32B zero-shot + T=3.02、リポジトリは非公開のまま。提出文は `results/public/bench_request_issue.md`）、同日午前に測定され JevBench v1.2.7 に掲載された（上の節）。「測定完了、トンネルを落としてよい」のコメントを受けて 08:51 に停止。cloudflared のカウンタでは公開中の総リクエスト 541（200 が 511、400 が 2 は自分の probe、404 が 27 はパス探索）。
+- 公開中の監視は `scripts/watch_public.sh`（issue のコメント、トンネル経由と localhost の health、cloudflared `/metrics` のリクエスト増分を 5 分ごとに `results/public/watch_public.log` に記録し、消えたプロセスは再起動する。GitHub には書き込まない）。uvicorn のアクセスログを git 管理下の `results/public/server.log` に向けていたため、ブランチ切替でファイルが差し替わり測定中のログを失った。`results/public/*.log` は ignore にした。
 
 ## 関連プロジェクト
 
@@ -646,5 +686,5 @@ jqv の独自性は次の 4 点にある。
 - **RLCD / proper scoring の本格評価** — CE + λ·Brier では temperature scaling を超えなかった（E 節）。分布をまたいで校正を保つには結果ベースの proper scoring による post-training が次の候補。
 - **CUDA / FlexAttention / Hydragen 型のサービング** — D3 は MPS では probe 用に SDPA が 2 回必要で、32B で packed の 1.5 倍にとどまる。CUDA では block-sparse カーネル 1 回にできる。vLLM / SGLang の prefix caching 上で同じ `/decision`・`/v1/systemone` を出す。
 - **domain-shift calibration** — MMLU ↔ JMMLU は転移、JevBench hard は部分転移、bridge は逆効果。タスク種別ごとの温度、または温度に依存しない校正学習。
-- **JevBench の held-out 303 問と judge tier** — 公開 endpoint を立てて Benchmark Heaven に bench request を出す。弱い family（long_policy、temporal_numeric）への few-shot / perm_avg の限定適用。
+- **JevBench の順位付き row** — v1.2.7 の row は held-out hard 109 問が未送信で順位なし（judge tier は測定済み）。順位を得るには serving code の公開（リポジトリ公開）か本番 endpoint が要る。弱い family（long_policy、temporal_numeric）への few-shot / perm_avg の限定適用。
 - **実アプリケーション** — classifier.dev 型の大量分類、grep 型のルーティングを `/v1/systemone` の上に載せて、選択的精度（p ≥ 0.9 で 44% を精度 0.97）を運用指標として使う。
