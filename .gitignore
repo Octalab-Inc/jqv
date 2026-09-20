@@ -5,3 +5,4 @@ results/*.npz
 results/*.log
 .pytest_cache/
 results/train/
+results/public/watch_*
