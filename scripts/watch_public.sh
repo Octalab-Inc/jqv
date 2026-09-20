@@ -9,7 +9,9 @@
 # Events are appended to results/public/watch_public.log as "<ts> <KIND> <detail>":
 #   WATCHER START/STOP, COMMENT (new comment on the issue), STATE (issue opened/closed),
 #   TUNNEL DOWN/RECOVERED/RESTARTED/STALE, SERVER DOWN/RECOVERED/RESTARTED/HUNG,
-#   CAFFEINATE RESTARTED, HB (heartbeat every 6 h).
+#   CAFFEINATE RESTARTED, TRAFFIC BASELINE/START/END (bursts of external requests through the
+#   tunnel, from cloudflared's local /metrics counters), REQUESTS (external requests per cycle),
+#   HB (heartbeat every 6 h).
 # A process that has disappeared is restarted with the commands from README "公開 endpoint".
 # A restarted Quick Tunnel gets a NEW url: the issue must then be updated by hand
 # (this script never writes to GitHub).
@@ -24,11 +26,13 @@ PUB=results/public
 LOG=$PUB/watch_public.log
 SEEN=$PUB/watch_seen_comments.txt
 STATE_FILE=$PUB/watch_issue_state.txt
+TRAFFIC_FILE=$PUB/watch_traffic.txt
 URL_FILE=$PUB/tunnel_url.txt
 TEMP_FILE=results/mmlu_packed_qwen3-32b_temperature.json
 
 tfail=0; lfail=0; tunnel_bad=0; server_bad=0; last_hb=0
-url=""; code=000; local_code=000
+url=""; code=000; local_code=000; own_requests=0
+m_total=0; m_2xx=0; m_4xx=0; m_5xx=0; active=0; idle=0; ext_sum=0; act_cycles=0
 
 ts() { date '+%Y-%m-%dT%H:%M:%S%z'; }
 log() { printf '%s %s\n' "$(ts)" "$*" >> "$LOG"; }
@@ -87,6 +91,7 @@ check_issue() {
 check_endpoint() {
   url=$(pub_url)
   code=$(http "$url/health" 20)
+  [ -n "$url" ] && own_requests=$((own_requests + 1))
   local_code=$(http "http://127.0.0.1:8000/health" 10)
 
   if [ "$local_code" = 200 ]; then
@@ -124,30 +129,82 @@ check_endpoint() {
   alive_caffeinate || restart_caffeinate
 }
 
+# cloudflared serves Prometheus counters on a local port; they count every request through the tunnel.
+read_metrics() {
+  local port m
+  port=$(lsof -nP -iTCP -a -c cloudflared 2>/dev/null | awk '/LISTEN/ {sub(".*:", "", $9); print $9; exit}')
+  [ -n "$port" ] || return 1
+  m=$(curl -s -m 5 "http://127.0.0.1:$port/metrics" 2>/dev/null) || return 1
+  [ -n "$m" ] || return 1
+  m_total=$(printf '%s\n' "$m" | awk '$1 == "cloudflared_tunnel_total_requests" {print int($2)}')
+  m_2xx=$(printf '%s\n' "$m" | awk -F'[{}" =]+' '$1 == "cloudflared_tunnel_response_by_code" && $3 ~ /^2/ {s += $4} END {print s + 0}')
+  m_4xx=$(printf '%s\n' "$m" | awk -F'[{}" =]+' '$1 == "cloudflared_tunnel_response_by_code" && $3 ~ /^4/ {s += $4} END {print s + 0}')
+  m_5xx=$(printf '%s\n' "$m" | awk -F'[{}" =]+' '$1 == "cloudflared_tunnel_response_by_code" && $3 ~ /^5/ {s += $4} END {print s + 0}')
+  [ -n "$m_total" ]
+}
+
+check_traffic() {
+  read_metrics || return 0
+  local p_total p2 p4 p5 d d2 d4 d5 ext
+  if [ ! -s "$TRAFFIC_FILE" ]; then
+    printf '%s %s %s %s\n' "$m_total" "$m_2xx" "$m_4xx" "$m_5xx" > "$TRAFFIC_FILE"
+    log "TRAFFIC BASELINE total=$m_total 2xx=$m_2xx 4xx=$m_4xx 5xx=$m_5xx (cloudflared counters since its start)"
+    own_requests=0
+    return 0
+  fi
+  read -r p_total p2 p4 p5 < "$TRAFFIC_FILE"
+  printf '%s %s %s %s\n' "$m_total" "$m_2xx" "$m_4xx" "$m_5xx" > "$TRAFFIC_FILE"
+  d=$((m_total - p_total)); d2=$((m_2xx - p2)); d4=$((m_4xx - p4)); d5=$((m_5xx - p5))
+  ext=$((d - own_requests)); own_requests=0
+  if [ "$d" -lt 0 ]; then log "TRAFFIC COUNTER RESET total=$m_total (cloudflared restarted?)"; return 0; fi
+  if [ "$ext" -gt 0 ]; then
+    log "REQUESTS +$ext external in ${INTERVAL}s (2xx=+$d2 4xx=+$d4 5xx=+$d5, total=$m_total)"
+    if [ "$active" = 0 ] && [ "$ext" -ge 2 ]; then
+      active=1; ext_sum=0; act_cycles=0
+      log "TRAFFIC START +$ext external requests in ${INTERVAL}s (total=$m_total)"
+    fi
+    if [ "$active" = 1 ]; then ext_sum=$((ext_sum + ext)); act_cycles=$((act_cycles + 1)); idle=0; fi
+  elif [ "$active" = 1 ]; then
+    idle=$((idle + 1))
+    if [ "$idle" -ge 2 ]; then
+      log "TRAFFIC END $ext_sum external requests over $act_cycles active cycles (total=$m_total)"
+      active=0
+    fi
+  fi
+}
+
 cycle() {
   local now n
   check_issue
   check_endpoint
+  check_traffic
   now=$(date +%s)
   if [ $((now - last_hb)) -ge "$HB_EVERY" ]; then
     n=$(grep -c . "$SEEN" 2>/dev/null); n=${n:-0}
-    log "HB tunnel=$url http=$code local=$local_code issue=$(cat "$STATE_FILE" 2>/dev/null) comments=$n"
+    log "HB tunnel=$url http=$code local=$local_code issue=$(cat "$STATE_FILE" 2>/dev/null) comments=$n requests_total=$m_total"
     last_hb=$now
   fi
 }
 
 status() {
-  local pids n
+  local pids n started
   pids=$(pgrep -f 'watch_publi[c]\.sh$' | tr '\n' ' ')
   if [ -n "$pids" ]; then echo "watcher   : running pid $pids"; else echo "watcher   : NOT RUNNING"; fi
   echo "processes : uvicorn=$(alive_uvicorn && echo ok || echo ABSENT) cloudflared=$(alive_tunnel && echo ok || echo ABSENT) caffeinate=$(alive_caffeinate && echo ok || echo ABSENT)"
   url=$(pub_url)
   echo "endpoint  : $url http=$(http "$url/health" 20) local=$(http http://127.0.0.1:8000/health 10)"
   echo "issue     : $(gh issue view "$ISSUE" -R "$REPO" --json state,comments,url --jq '"\(.url) state=\(.state) comments=\(.comments|length)"' 2>/dev/null || echo 'gh unavailable')"
+  if read_metrics; then
+    started=$(ps -o lstart= -p "$(pgrep -f 'cloudflared tunnel --url' | head -1)" 2>/dev/null | sed 's/  */ /g')
+    echo "traffic   : total=$m_total 2xx=$m_2xx 4xx=$m_4xx 5xx=$m_5xx (cloudflared counters since $started)"
+  else
+    echo "traffic   : cloudflared metrics unavailable"
+  fi
+  echo "last traffic: $(grep -E ' (REQUESTS|TRAFFIC) ' "$LOG" 2>/dev/null | tail -1)"
   echo "last HB   : $(grep ' HB ' "$LOG" 2>/dev/null | tail -1)"
-  n=$(grep -vc ' HB ' "$LOG" 2>/dev/null)
+  n=$(grep -vcE ' (HB|REQUESTS) ' "$LOG" 2>/dev/null)
   echo "events    : ${n:-0} (last 5)"
-  grep -v ' HB ' "$LOG" 2>/dev/null | tail -5
+  grep -vE ' (HB|REQUESTS) ' "$LOG" 2>/dev/null | tail -5
 }
 
 case "${1:-loop}" in
