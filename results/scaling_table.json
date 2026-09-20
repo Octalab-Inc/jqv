@@ -18,6 +18,7 @@
       "jmmlu_acc_slot": 0.505,
       "slot_ece_raw": 0.13705649737268685,
       "slot_ece_T": 0.04394479386508465,
+      "mmlu_acc_slot_permavg": null,
       "packed_qps_s2k_q100": 48.64797546547206,
       "packed_permavg_qps_s2k_q100": 28.09726119850885
     },
@@ -39,8 +40,31 @@
       "jmmlu_acc_slot": 0.71125,
       "slot_ece_raw": 0.1138030376657844,
       "slot_ece_T": 0.04491425618529321,
+      "mmlu_acc_slot_permavg": null,
       "packed_qps_s2k_q100": 9.267009546756116,
       "packed_permavg_qps_s2k_q100": 4.432355629425121
+    },
+    {
+      "model": "qwen3-32b",
+      "params": "32.8B",
+      "mmlu_acc_raw": 0.80875,
+      "jmmlu_acc_raw": 0.77125,
+      "ece_raw": 0.13685496225953106,
+      "ece_T": 0.022779533043503747,
+      "T": 3.0225814579771493,
+      "mmlu_acc_permavg": 0.8125,
+      "jmmlu_acc_permavg": 0.79,
+      "permavg_ece_raw": 0.08716662377119064,
+      "permavg_ece_T": 0.03403367422521114,
+      "mmlu_acc_shots5_permavg": null,
+      "slot_run": "qwen3-32b_slot_best",
+      "mmlu_acc_slot": 0.80125,
+      "jmmlu_acc_slot": 0.7825,
+      "slot_ece_raw": 0.11521503813564773,
+      "slot_ece_T": 0.030860325992107394,
+      "mmlu_acc_slot_permavg": 0.81875,
+      "packed_qps_s2k_q100": 2.486994186187463,
+      "packed_permavg_qps_s2k_q100": null
     }
   ],
   "jev": {

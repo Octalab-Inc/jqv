@@ -425,11 +425,12 @@ Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk で�
 同じコード・プロンプト・1,200 問サブセット（seed 0、val 400 / test 800）で backbone だけを変える。dense の Qwen3 に限定し、
 MoE（30B-A3B）と Qwen3.5（hybrid attention）は attention / KV 構造の議論が変わるため使わない。Jev の行は Hume の測定値（zero-shot、温度なし）。
 
-| backbone | params | B zero-shot: MMLU / JMMLU | B ECE raw / +T (T) | B + perm_avg: MMLU / JMMLU | perm_avg ECE raw / +T | 5-shot + perm_avg: MMLU | slot+LoRA: MMLU / JMMLU | slot ECE raw / +T | packed q/s (S=2k, Q=100) plain / perm_avg |
-|---|---:|---:|---|---:|---|---:|---:|---|---:|
-| qwen3-1.7b | 1.7B | 0.554 / 0.466 | 0.413 / 0.080 (12.0) | 0.584 / 0.485 | 0.195 / 0.063 | 0.578 | 0.575 / 0.505 (slot_lora) | 0.137 / 0.044 | 48.6 / 28.1 |
-| qwen3-14b | 14.8B | 0.750 / 0.710 | 0.207 / 0.042 (5.1) | 0.781 / 0.729 | 0.113 / 0.047 | 0.782 | 0.757 / 0.711 (qwen3-14b_slot_brier0) | 0.114 / 0.045 | 9.3 / 4.4 |
-| Jev (TypeSafe, Hume 2025) | ? | **0.918** / - | 0.031 (zero-shot, no T) | - | - | - | - | - | 30k tok in ~160 ms |
+| backbone | params | B zero-shot: MMLU / JMMLU | B ECE raw / +T (T) | B + perm_avg: MMLU / JMMLU | perm_avg ECE raw / +T | 5-shot + perm_avg: MMLU | slot+LoRA: MMLU / JMMLU | slot ECE raw / +T | slot + perm_avg: MMLU | packed q/s (S=2k, Q=100) plain / perm_avg |
+|---|---:|---:|---|---:|---|---:|---:|---|---:|---:|
+| qwen3-1.7b | 1.7B | 0.554 / 0.466 | 0.413 / 0.080 (12.0) | 0.584 / 0.485 | 0.195 / 0.063 | 0.578 | 0.575 / 0.505 (slot_lora) | 0.137 / 0.044 | - | 48.6 / 28.1 |
+| qwen3-14b | 14.8B | 0.750 / 0.710 | 0.207 / 0.042 (5.1) | 0.781 / 0.729 | 0.113 / 0.047 | 0.782 | 0.757 / 0.711 (qwen3-14b_slot_brier0) | 0.114 / 0.045 | - | 9.3 / 4.4 |
+| qwen3-32b | 32.8B | 0.809 / 0.771 | 0.137 / 0.023 (3.0) | 0.812 / 0.790 | 0.087 / 0.034 | - | 0.801 / 0.782 (qwen3-32b_slot_best) | 0.115 / 0.031 | 0.819 | 2.5 / - |
+| Jev (TypeSafe, Hume 2025) | ? | **0.918** / - | 0.031 (zero-shot, no T) | - | - | - | - | - | - | 30k tok in ~160 ms |
 
 ### 1.7B → 14B で分かったこと
 
@@ -466,7 +467,36 @@ MoE（30B-A3B）と Qwen3.5（hybrid attention）は attention / KV 構造の議
 - 32B に持っていく設定は **λ=0**（MMLU val NLL 最小 0.675。`results/scaling_best_config.json`）。1.7B の選択は λ=1 だったが、どちらも差はノイズで、CE 単独が最も単純。
 - 学習は 1 run 97〜119 分（0.09〜0.10 step/s、`--grad-accum 2`）、評価は 1 データセット 9〜12 分。`--resume` は λ=1 の run で 20 step → 600 step の再開を確認。
 
-次は 32B で B と slot + LoRA（λ=0）だけを走らせ、backbone スケーリング表を完成させる。
+### 32B: 最終確認（B、perm_avg、slot + LoRA λ=0、slot + LoRA + perm_avg）
+
+| 32B（test 800） | MMLU acc | Δ vs zero-shot [95% CI] | p | NLL raw / +T | ECE raw / +T | T | JMMLU acc | ECE raw / +T |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| zero-shot B | 0.809 | - | - | 0.947 / 0.535 | 0.137 / **0.023** | 3.0 | 0.771 | 0.158 / 0.041 |
+| B + perm_avg | 0.812 | +0.004 [−0.013, +0.020] | 0.76 | 0.740 / 0.528 | 0.087 / 0.034 | 2.4 | **0.790** | 0.078 / **0.018** |
+| slot + LoRA λ=0 | 0.801 | −0.007 [−0.021, +0.006] | 0.38 | 0.674 / 0.550 | 0.115 / 0.031 | 1.7 | 0.782 | 0.109 / 0.040 |
+| slot + LoRA + perm_avg | **0.819** | +0.010 [−0.007, +0.028] | 0.34 | 0.583 / 0.533 | 0.063 / 0.042 | 1.4 | - | - |
+
+学習: 600 step × batch 8（micro batch 2 × 累積 4、gradient checkpointing）で 302 分（0.03 step/s）。メモリは 123〜127 GB 使用で 128 GB に収まった。
+best は step 300（val NLL 0.688）。評価は slot engine で 1 データセット 22〜24 分、perm_avg 付きで 60 分。
+
+### 1.7B → 14B → 32B の結論
+
+1. **精度は backbone でほぼ決まる。** zero-shot の直接 readout で MMLU 0.554 → 0.750 → 0.809、Jev（0.918）との差は 36 → 17 → 11 ポイント。
+   目標の 80% は 32B の zero-shot で到達した。推論側の工夫（perm_avg）は 1.7B / 14B で +3 ポイント、32B では +0.4 に縮む。
+2. **校正は 32B + 温度 1 個で Jev の水準に届く。** ECE+T は 0.080 → 0.042 → 0.023（Jev 0.031）。温度は 12 → 5.1 → 3.0 と単調に下がり、
+   JMMLU で学習した T=2.6 を MMLU に当てても 0.031。言語をまたいだ scalar 校正で Jev の zero-shot 値に並ぶ。
+   ただし Jev は温度なしの値で、jqv の生 ECE は 32B でも 0.137（perm_avg 後 0.087）。
+3. **4,800 例の decision training は 14B 以上で精度を上げない。** slot + LoRA は 1.7B で +2〜4 ポイント、14B で +0.5〜1.0（有意差なし）、
+   32B で −0.7（p=0.38）。生の校正は改善する（ECE 0.137 → 0.115、NLL 0.95 → 0.67）が、温度後は zero-shot + T を超えない。
+   Jev との残り 10 ポイントは、この規模の head 学習では埋まらない。backbone 能力か、桁違いに大きい post-training（RLCD）の効果と考えるのが自然。
+4. **共有計算の効果と isolation は backbone に依らない。** Q=10 で共有系 3 engine は naive の 7〜9 倍、漏れは 3 サイズとも ≈0 / 負対照 0.995。
+   絶対速度は packed で 48.6 → 9.3 → 2.5 q/s（S=2k・Q=100）で、パラメータ数にほぼ比例して遅くなる。
+5. **mask なしの D3 は backbone が大きいほど有利。** S=2038・Q=100 で shared / packed は 1.7B 0.87 倍、14B 1.07 倍、32B **1.50 倍**。
+   層数と head 数が増えるほど dense masked attention の無駄が効く。
+6. **選択的精度（32B、校正後）**: p ≥ 0.9 で MMLU の 44% を精度 0.97、p ≥ 0.7 で 75% を 0.91 で自動処理できる（slot + perm_avg は 50% を 0.97）。
+7. 5 番目選択肢の Δlog-odds は 1.7B −0.49、14B −1.24、32B +0.08（いずれも bridge 21 問、CI ±0.4）で一貫せず、n=300 での再測定が必要。
+
+次の外部評価は JevBench（Benchmark Heaven、Jev の hard tier 74.1%）で、MMLU の差 11 ポイントが Decision 用途でどうなるかを見る（`tasks/active/jevbench-eval.md`）。
 
 ## 関連プロジェクト
 

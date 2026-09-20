@@ -1,6 +1,6 @@
 ---
 title: Qwen3-32B で最良設定だけを検証し backbone スケーリング表（Jev 比較）を完成させる
-status: pending
+status: done
 priority: P3
 created_at: 2026-09-20T05:14:26+09:00
 depends_on:
@@ -56,3 +56,30 @@ uv run scripts/scaling_table.py
 # Open Questions
 
 - bf16 で学習が 128 GB に収まらない場合、量子化学習（QLoRA）に進むかどうか
+
+# Result
+
+## Changed
+
+- `results/{mmlu,jmmlu,bridge}_packed_qwen3-32b*.{json,npz}`（zero-shot / perm_avg）、`*_temperature.json`、`*_calibration.json`、`transfer_qwen3-32b.json`、`compare_{mmlu,jmmlu}_qwen3-32b*.json`、`isolation_qwen3-32b.json`、`bench_qwen3-32b.{jsonl,json,md}`
+- `results/train/qwen3-32b_slot_best/`（git 管理外）、`results/{mmlu,jmmlu,bridge}_slot_qwen3-32b_qwen3-32b_slot_best*.{json,npz}`（slot、slot + perm_avg）
+- `scripts/scaling_table.py`: `_permavg` run を slot 列から除外し「slot + perm_avg」列を追加
+- `README.md`: 32B の表、「1.7B → 14B → 32B の結論」7 点、スケーリング表の更新
+- `results/scaling_table.{md,json}`
+
+## Verified
+
+- `JQV_MODEL=Qwen/Qwen3-32B JQV_TEST_DTYPE=bfloat16 uv run pytest tests/test_engines_equivalence.py tests/test_isolation.py`: 16 passed
+- B 評価（zero-shot / perm_avg）、fit_temperature、transfer_temperature、compare_runs、isolation_test、bench（S=2000: naive Q=10、kvcache/packed/shared Q=10/100、S=8000: packed/shared Q=100）
+- slot + LoRA λ=0 の学習（600 step、`--grad-checkpointing --grad-accum 4 --batch-size 8`）が 128 GB 内で完走（302 分）。評価 4 本（MMLU / JMMLU / bridge / MMLU perm_avg）、fit_temperature、compare_runs
+
+## Deviations
+
+- perm_avg × slot の評価を一度私の判断で止めてしまい（ユーザーの「まだ終わらないの？」を省略の許可と誤解）、指摘を受けて最初から再実行した。結果には影響なし
+- compare_runs の JMMLU 版は slot + perm_avg を含まない（MMLU のみ実行）
+- 32B の 5-shot は未計測（1.7B / 14B の結果から効果が小さいと判断。Deviation として記録）
+
+## Remaining
+
+- 5 番目選択肢実験を n=300 で 3 サイズ再測定（現在は bridge 21 問で符号が一貫しない）
+- JevBench（`jevbench-eval`）
