@@ -155,19 +155,23 @@ check_traffic() {
   read -r p_total p2 p4 p5 < "$TRAFFIC_FILE"
   printf '%s %s %s %s\n' "$m_total" "$m_2xx" "$m_4xx" "$m_5xx" > "$TRAFFIC_FILE"
   d=$((m_total - p_total)); d2=$((m_2xx - p2)); d4=$((m_4xx - p4)); d5=$((m_5xx - p5))
-  ext=$((d - own_requests)); own_requests=0
+  ext=$((d - own_requests)); ext2=$((d2 - own_requests)); own_requests=0
+  [ "$ext2" -lt 0 ] && ext2=0
   if [ "$d" -lt 0 ]; then log "TRAFFIC COUNTER RESET total=$m_total (cloudflared restarted?)"; return 0; fi
   if [ "$ext" -gt 0 ]; then
-    log "REQUESTS +$ext external in ${INTERVAL}s (2xx=+$d2 4xx=+$d4 5xx=+$d5, total=$m_total)"
-    if [ "$active" = 0 ] && [ "$ext" -ge 2 ]; then
+    log "REQUESTS +$ext external in ${INTERVAL}s (2xx=+$ext2 4xx=+$d4 5xx=+$d5, total=$m_total)"
+  fi
+  # a burst = successful external responses; 4xx path probes alone do not count
+  if [ "$ext2" -ge 2 ] || { [ "$active" = 1 ] && [ "$ext2" -gt 0 ]; }; then
+    if [ "$active" = 0 ]; then
       active=1; ext_sum=0; act_cycles=0
-      log "TRAFFIC START +$ext external requests in ${INTERVAL}s (total=$m_total)"
+      log "TRAFFIC START +$ext2 successful external requests in ${INTERVAL}s (total=$m_total)"
     fi
-    if [ "$active" = 1 ]; then ext_sum=$((ext_sum + ext)); act_cycles=$((act_cycles + 1)); idle=0; fi
+    ext_sum=$((ext_sum + ext2)); act_cycles=$((act_cycles + 1)); idle=0
   elif [ "$active" = 1 ]; then
     idle=$((idle + 1))
     if [ "$idle" -ge 2 ]; then
-      log "TRAFFIC END $ext_sum external requests over $act_cycles active cycles (total=$m_total)"
+      log "TRAFFIC END $ext_sum successful external requests over $act_cycles active cycles (total=$m_total)"
       active=0
     fi
   fi
