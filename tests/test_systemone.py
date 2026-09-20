@@ -17,6 +17,7 @@ class FakeRT:
 
 class FakeEngine:
     rt = FakeRT()
+    calibrated = False
 
     def decide(self, state, questions):
         out = []
@@ -25,8 +26,17 @@ class FakeEngine:
             p = [i + 1 for i in range(k)]
             s = sum(p)
             p = [x / s for x in p]
-            out.append(Decision(logits=[0.0] * k, probabilities=p, confidence=0.0))
+            cal = [1.0 / k] * k if self.calibrated else None
+            out.append(Decision(logits=[0.0] * k, probabilities=p, calibrated_probabilities=cal, confidence=0.0))
         return out
+
+
+def test_served_probabilities_are_calibrated_when_available():
+    eng = FakeEngine()
+    eng.calibrated = True
+    body = {"state": "s", "questions": {"d": {"type": "choice", "instructions": "Pick.", "criteria": {"a": "", "b": ""}}}}
+    out = decide_systemone(eng, body, "m")
+    assert out["answers"]["d"]["probabilities"] == {"a": 0.5, "b": 0.5}
 
 
 def test_choice_noul_score_mapping():

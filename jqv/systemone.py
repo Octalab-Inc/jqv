@@ -86,6 +86,8 @@ def decide_systemone(engine, body: dict, model_name: str) -> dict:
     decisions = engine.decide(state, qs)
     prefix = engine.rt.prompt.prefix_ids(state)
     n_in = len(prefix) + sum(len(engine.rt.prompt.suffix_ids(q.question, q.choices)) for q in qs)
-    answers = {name: format_answer(meta, d.probabilities) for name, meta, d in zip(names, metas, decisions)}
+    # serve the calibrated distribution when the server has a temperature (JQV_TEMPERATURE_FILE), else the raw one
+    answers = {name: format_answer(meta, d.calibrated_probabilities or d.probabilities)
+               for name, meta, d in zip(names, metas, decisions)}
     return {"answers": answers, "usage": {"input_tokens": n_in, "output_tokens": 0},
             "model": body.get("model") or model_name}
