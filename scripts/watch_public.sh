@@ -139,7 +139,7 @@ cycle() {
 status() {
   local pids n
   pids=$(pgrep -f 'watch_publi[c]\.sh$' | tr '\n' ' ')
-  echo "watcher   : ${pids:+running pid ${pids}}${pids:-NOT RUNNING}"
+  if [ -n "$pids" ]; then echo "watcher   : running pid $pids"; else echo "watcher   : NOT RUNNING"; fi
   echo "processes : uvicorn=$(alive_uvicorn && echo ok || echo ABSENT) cloudflared=$(alive_tunnel && echo ok || echo ABSENT) caffeinate=$(alive_caffeinate && echo ok || echo ABSENT)"
   url=$(pub_url)
   echo "endpoint  : $url http=$(http "$url/health" 20) local=$(http http://127.0.0.1:8000/health 10)"
