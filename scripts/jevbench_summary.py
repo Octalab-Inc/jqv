@@ -103,13 +103,17 @@ def main():
         hard_ece = tiers.get("hard", {}).get("ece")
         calib = max(0.0, 100 * (1 - hard_ece / 0.5)) if hard_ece is not None else None
         lat = [v["latency"].get("p50_s") for v in tiers.values() if v["latency"].get("p50_s") is not None]
-        T, t_file = temperature_for(cfg)
         hard_ece_T = calib_T = None
-        if T is not None and "hard" in tiers:
-            sT = summarize_with_temperature(run_dir, "hard", T)
-            if sT:
-                hard_ece_T = ece_value(sT.get("ece"))
-                calib_T = max(0.0, 100 * (1 - hard_ece_T / 0.5)) if hard_ece_T is not None else None
+        if cfg.get("temperature_file"):  # server already returned temperature-scaled probabilities: harness ECE is the +T value
+            T, t_file = json.loads((RESULTS / Path(cfg["temperature_file"]).name).read_text())["temperature"], Path(cfg["temperature_file"]).name
+            hard_ece_T, calib_T, hard_ece, calib = hard_ece, calib, None, None
+        else:
+            T, t_file = temperature_for(cfg)
+            if T is not None and "hard" in tiers:
+                sT = summarize_with_temperature(run_dir, "hard", T)
+                if sT:
+                    hard_ece_T = ece_value(sT.get("ece"))
+                    calib_T = max(0.0, 100 * (1 - hard_ece_T / 0.5)) if hard_ece_T is not None else None
         rows.append({"label": run_dir.name, **cfg, "tiers": tiers, "intelligence_public": intel,
                      "calibration_public": calib, "hard_ece": hard_ece, "p50_raw_s": (sum(lat) / len(lat)) if lat else None,
                      "temperature": T, "temperature_file": t_file, "hard_ece_T": hard_ece_T, "calibration_public_T": calib_T})
