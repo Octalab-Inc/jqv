@@ -6,3 +6,4 @@ results/*.log
 .pytest_cache/
 results/train/
 results/public/watch_*
+results/public/*.log
