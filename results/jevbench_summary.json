@@ -1,0 +1,539 @@
+{
+  "rows": [
+    {
+      "label": "qwen3-1.7b_packed",
+      "model": "Qwen/Qwen3-1.7B",
+      "engine": "packed",
+      "perm_avg": false,
+      "head_dir": null,
+      "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "n": 48,
+          "ece": 7.377632602612039e-07,
+          "brier": 5.215813096097589e-11,
+          "latency": {
+            "n": 48,
+            "p50_s": 0.02674202050548047,
+            "p95_s": 0.031244166920077986
+          },
+          "n_failed": 0
+        },
+        "standard": {
+          "accuracy": 0.625,
+          "n": 72,
+          "ece": 0.3728480997737309,
+          "brier": 0.7311428527017563,
+          "latency": {
+            "n": 72,
+            "p50_s": 0.026448291493579745,
+            "p95_s": 0.028826510449289345
+          },
+          "n_failed": 0
+        },
+        "hard": {
+          "accuracy": 0.42342342342342343,
+          "n": 111,
+          "ece": 0.5420168763182338,
+          "brier": 1.1101742770441902,
+          "latency": {
+            "n": 111,
+            "p50_s": 0.07657283399021253,
+            "p95_s": 0.413135645998409
+          },
+          "n_failed": 0
+        }
+      },
+      "limit": null,
+      "intelligence_public": 61.392642642642656,
+      "calibration_public": 0.0,
+      "hard_ece": 0.5420168763182338,
+      "p50_raw_s": 0.04325438199642425,
+      "temperature": 11.955220698691763,
+      "temperature_file": "mmlu_packed_qwen3-1.7b_temperature.json",
+      "hard_ece_T": 0.15713592923885597,
+      "calibration_public_T": 68.5728141522288
+    },
+    {
+      "label": "qwen3-1.7b_permavg",
+      "model": "Qwen/Qwen3-1.7B",
+      "engine": "packed",
+      "perm_avg": true,
+      "head_dir": null,
+      "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "n": 48,
+          "ece": 0.004169156269316525,
+          "brier": 0.0016668624100729123,
+          "latency": {
+            "n": 48,
+            "p50_s": 0.053041145991301164,
+            "p95_s": 0.0629616731108399
+          },
+          "n_failed": 0
+        },
+        "standard": {
+          "accuracy": 0.7083333333333334,
+          "n": 72,
+          "ece": 0.23294091794331717,
+          "brier": 0.48392007077849886,
+          "latency": {
+            "n": 72,
+            "p50_s": 0.05069202100276016,
+            "p95_s": 0.0789006186183542
+          },
+          "n_failed": 0
+        },
+        "hard": {
+          "accuracy": 0.43243243243243246,
+          "n": 111,
+          "ece": 0.4046888011401792,
+          "brier": 0.9363827132951638,
+          "latency": {
+            "n": 111,
+            "p50_s": 0.10930187499616295,
+            "p95_s": 0.5411920619953889
+          },
+          "n_failed": 0
+        }
+      },
+      "limit": null,
+      "intelligence_public": 65.00875875875877,
+      "calibration_public": 19.062239771964162,
+      "hard_ece": 0.4046888011401792,
+      "p50_raw_s": 0.07101168066340809,
+      "temperature": 8.795296191520528,
+      "temperature_file": "mmlu_packed_qwen3-1.7b_permavg_temperature.json",
+      "hard_ece_T": 0.14248048988549333,
+      "calibration_public_T": 71.50390202290133
+    },
+    {
+      "label": "qwen3-1.7b_slot",
+      "model": "Qwen/Qwen3-1.7B",
+      "engine": "slot",
+      "perm_avg": false,
+      "head_dir": "results/train/slot_lora/best",
+      "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "n": 48,
+          "ece": 0.019913922301687634,
+          "brier": 0.004406580124510124,
+          "latency": {
+            "n": 48,
+            "p50_s": 0.03483320900704712,
+            "p95_s": 0.03994083750876598
+          },
+          "n_failed": 0
+        },
+        "standard": {
+          "accuracy": 0.6805555555555556,
+          "n": 72,
+          "ece": 0.15135078002802202,
+          "brier": 0.4709630018550197,
+          "latency": {
+            "n": 72,
+            "p50_s": 0.034878937469329685,
+            "p95_s": 0.03781250379106496
+          },
+          "n_failed": 0
+        },
+        "hard": {
+          "accuracy": 0.4144144144144144,
+          "n": 111,
+          "ece": 0.2556042086567965,
+          "brier": 0.7538992133971034,
+          "latency": {
+            "n": 111,
+            "p50_s": 0.0738487089984119,
+            "p95_s": 0.3626136669772677
+          },
+          "n_failed": 0
+        }
+      },
+      "limit": null,
+      "intelligence_public": 63.17776109442777,
+      "calibration_public": 48.8791582686407,
+      "hard_ece": 0.2556042086567965,
+      "p50_raw_s": 0.04785361849159623,
+      "temperature": 1.8187022803910087,
+      "temperature_file": "mmlu_slot_qwen3-1.7b_slot_lora_temperature.json",
+      "hard_ece_T": 0.1457325550624821,
+      "calibration_public_T": 70.85348898750358
+    },
+    {
+      "label": "qwen3-14b_packed",
+      "model": "Qwen/Qwen3-14B",
+      "engine": "packed",
+      "perm_avg": false,
+      "head_dir": null,
+      "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "n": 48,
+          "ece": 4.707598312059247e-06,
+          "brier": 1.75057847543705e-09,
+          "latency": {
+            "n": 48,
+            "p50_s": 0.12187920851283707,
+            "p95_s": 0.14994672102038747
+          },
+          "n_failed": 0
+        },
+        "standard": {
+          "accuracy": 0.875,
+          "n": 72,
+          "ece": 0.11351063423573214,
+          "brier": 0.237659269991181,
+          "latency": {
+            "n": 72,
+            "p50_s": 0.15545204203226604,
+            "p95_s": 0.1981080793251749
+          },
+          "n_failed": 0
+        },
+        "hard": {
+          "accuracy": 0.5495495495495496,
+          "n": 111,
+          "ece": 0.37757398555343,
+          "brier": 0.7921982643454161,
+          "latency": {
+            "n": 111,
+            "p50_s": 0.5185881250072271,
+            "p95_s": 2.9680087080050725
+          },
+          "n_failed": 0
+        }
+      },
+      "limit": null,
+      "intelligence_public": 76.37012012012013,
+      "calibration_public": 24.485202889313996,
+      "hard_ece": 0.37757398555343,
+      "p50_raw_s": 0.2653064585174434,
+      "temperature": 5.0686986443854245,
+      "temperature_file": "mmlu_packed_qwen3-14b_temperature.json",
+      "hard_ece_T": 0.12553333208570067,
+      "calibration_public_T": 74.89333358285987
+    },
+    {
+      "label": "qwen3-14b_permavg",
+      "model": "Qwen/Qwen3-14B",
+      "engine": "packed",
+      "perm_avg": true,
+      "head_dir": null,
+      "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+      "limit": null,
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "n": 48,
+          "ece": 1.1678382664248588e-06,
+          "brier": 1.1011930609788128e-10,
+          "latency": {
+            "n": 48,
+            "p50_s": 0.3249968334566802,
+            "p95_s": 0.6287916896835668
+          },
+          "n_failed": 0
+        },
+        "standard": {
+          "accuracy": 0.8888888888888888,
+          "n": 72,
+          "ece": 0.0967229317970993,
+          "brier": 0.2140249319719788,
+          "latency": {
+            "n": 72,
+            "p50_s": 0.427959437482059,
+            "p95_s": 0.7797239998239094
+          },
+          "n_failed": 0
+        },
+        "hard": {
+          "accuracy": 0.5675675675675675,
+          "n": 111,
+          "ece": 0.33454879864503395,
+          "brier": 0.7556476708414077,
+          "latency": {
+            "n": 111,
+            "p50_s": 1.0257779590319842,
+            "p95_s": 4.9215643540082965
+          },
+          "n_failed": 0
+        }
+      },
+      "intelligence_public": 77.660994327661,
+      "calibration_public": 33.090240270993206,
+      "hard_ece": 0.33454879864503395,
+      "p50_raw_s": 0.5929114099902412,
+      "temperature": 3.8888386485219235,
+      "temperature_file": "mmlu_packed_qwen3-14b_permavg_temperature.json",
+      "hard_ece_T": 0.18546904679974374,
+      "calibration_public_T": 62.90619064005125
+    },
+    {
+      "label": "qwen3-14b_slot",
+      "model": "Qwen/Qwen3-14B",
+      "engine": "slot",
+      "perm_avg": false,
+      "head_dir": "results/train/qwen3-14b_slot_brier0/best",
+      "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+      "limit": null,
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "n": 48,
+          "ece": 0.0015577651805264159,
+          "brier": 2.3411743270323375e-05,
+          "latency": {
+            "n": 48,
+            "p50_s": 0.1291315205162391,
+            "p95_s": 0.29290095398027916
+          },
+          "n_failed": 0
+        },
+        "standard": {
+          "accuracy": 0.8888888888888888,
+          "n": 72,
+          "ece": 0.13148006458504818,
+          "brier": 0.1934392340294226,
+          "latency": {
+            "n": 72,
+            "p50_s": 0.21880945799057372,
+            "p95_s": 0.2480125296540791
+          },
+          "n_failed": 0
+        },
+        "hard": {
+          "accuracy": 0.5855855855855856,
+          "n": 111,
+          "ece": 0.22146899258740965,
+          "brier": 0.6399364243708532,
+          "latency": {
+            "n": 111,
+            "p50_s": 0.6372813750058413,
+            "p95_s": 3.7859899165050592
+          },
+          "n_failed": 0
+        }
+      },
+      "intelligence_public": 78.41174507841176,
+      "calibration_public": 55.70620148251807,
+      "hard_ece": 0.22146899258740965,
+      "p50_raw_s": 0.3284074511708847,
+      "temperature": 1.5806575417036348,
+      "temperature_file": "mmlu_slot_qwen3-14b_qwen3-14b_slot_brier0_temperature.json",
+      "hard_ece_T": 0.1933444099123071,
+      "calibration_public_T": 61.33111801753858
+    },
+    {
+      "label": "qwen3-32b_packed",
+      "model": "Qwen/Qwen3-32B",
+      "engine": "packed",
+      "perm_avg": false,
+      "head_dir": null,
+      "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+      "limit": null,
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "n": 48,
+          "ece": 8.755361150747376e-06,
+          "brier": 2.1155515744643384e-09,
+          "latency": {
+            "n": 48,
+            "p50_s": 0.34705889550969005,
+            "p95_s": 0.5798506023071239
+          },
+          "n_failed": 0
+        },
+        "standard": {
+          "accuracy": 0.9583333333333334,
+          "n": 72,
+          "ece": 0.06280889105249164,
+          "brier": 0.09305728674940919,
+          "latency": {
+            "n": 72,
+            "p50_s": 0.38719281248631887,
+            "p95_s": 0.4705447836691747
+          },
+          "n_failed": 0
+        },
+        "hard": {
+          "accuracy": 0.6216216216216216,
+          "n": 111,
+          "ece": 0.2740797258757903,
+          "brier": 0.6484495790615552,
+          "latency": {
+            "n": 111,
+            "p50_s": 1.300841957970988,
+            "p95_s": 8.129883104003966
+          },
+          "n_failed": 0
+        }
+      },
+      "intelligence_public": 82.61386386386387,
+      "calibration_public": 45.18405482484194,
+      "hard_ece": 0.2740797258757903,
+      "p50_raw_s": 0.6783645553223323,
+      "temperature": 3.0225814579771493,
+      "temperature_file": "mmlu_packed_qwen3-32b_temperature.json",
+      "hard_ece_T": 0.1068191755594521,
+      "calibration_public_T": 78.63616488810959
+    },
+    {
+      "label": "qwen3-32b_permavg",
+      "model": "Qwen/Qwen3-32B",
+      "engine": "packed",
+      "perm_avg": true,
+      "head_dir": null,
+      "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+      "limit": null,
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "n": 48,
+          "ece": 7.817466562032305e-05,
+          "brier": 5.234174103827453e-07,
+          "latency": {
+            "n": 48,
+            "p50_s": 0.9997391454817262,
+            "p95_s": 1.3805517311790028
+          },
+          "n_failed": 0
+        },
+        "standard": {
+          "accuracy": 0.9444444444444444,
+          "n": 72,
+          "ece": 0.037607973482964616,
+          "brier": 0.08790610394672906,
+          "latency": {
+            "n": 72,
+            "p50_s": 0.8681146460294258,
+            "p95_s": 1.7363985334668544
+          },
+          "n_failed": 0
+        },
+        "hard": {
+          "accuracy": 0.6396396396396397,
+          "n": 111,
+          "ece": 0.2329067772909577,
+          "brier": 0.608980038066445,
+          "latency": {
+            "n": 111,
+            "p50_s": 2.1328262080205604,
+            "p95_s": 11.068431229476118
+          },
+          "n_failed": 0
+        }
+      },
+      "intelligence_public": 82.82449115782451,
+      "calibration_public": 53.418644541808455,
+      "hard_ece": 0.2329067772909577,
+      "p50_raw_s": 1.333559999843904,
+      "temperature": 2.4494978188183167,
+      "temperature_file": "mmlu_packed_qwen3-32b_permavg_temperature.json",
+      "hard_ece_T": 0.11496746690068674,
+      "calibration_public_T": 77.00650661986266
+    },
+    {
+      "label": "qwen3-32b_slot",
+      "model": "Qwen/Qwen3-32B",
+      "engine": "slot",
+      "perm_avg": false,
+      "head_dir": "results/train/qwen3-32b_slot_best/best",
+      "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+      "limit": null,
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "n": 48,
+          "ece": 0.0008315306307243864,
+          "brier": 1.192587072165567e-05,
+          "latency": {
+            "n": 48,
+            "p50_s": 0.3688185625069309,
+            "p95_s": 0.5238490356627152
+          },
+          "n_failed": 0
+        },
+        "standard": {
+          "accuracy": 0.9444444444444444,
+          "n": 72,
+          "ece": 0.035769901126008745,
+          "brier": 0.10436776357309172,
+          "latency": {
+            "n": 72,
+            "p50_s": 0.40291258349316195,
+            "p95_s": 0.45308775157900527
+          },
+          "n_failed": 0
+        },
+        "hard": {
+          "accuracy": 0.6216216216216216,
+          "n": 111,
+          "ece": 0.22886032940870205,
+          "brier": 0.5812772115727094,
+          "latency": {
+            "n": 111,
+            "p50_s": 1.3348616659641266,
+            "p95_s": 8.56521012497251
+          },
+          "n_failed": 0
+        }
+      },
+      "intelligence_public": 82.07374040707374,
+      "calibration_public": 54.22793411825959,
+      "hard_ece": 0.22886032940870205,
+      "p50_raw_s": 0.7021976039880732,
+      "temperature": 1.6929973958966806,
+      "temperature_file": "mmlu_slot_qwen3-32b_qwen3-32b_slot_best_temperature.json",
+      "hard_ece_T": 0.13201170156707195,
+      "calibration_public_T": 73.5976596865856
+    }
+  ],
+  "leaderboard": [
+    {
+      "label": "Jev 1.13 (TypeSafe)",
+      "intelligence": 90.4,
+      "calibration": 82.7,
+      "hard": 0.741,
+      "p50": 0.65,
+      "score": 75.4
+    },
+    {
+      "label": "SemIf Qwen3.5-4B",
+      "intelligence": 85.9,
+      "calibration": 72.6,
+      "hard": 0.595,
+      "p50": 0.2,
+      "score": 74.7
+    },
+    {
+      "label": "openjev-sglang Qwen3.6-35B-A3B",
+      "intelligence": 88.9,
+      "calibration": null,
+      "hard": 0.714,
+      "p50": 0.68,
+      "score": null
+    },
+    {
+      "label": "GPT-5.6 Luna (low)",
+      "intelligence": 96.8,
+      "calibration": 89.8,
+      "hard": 0.945,
+      "p50": 0.97,
+      "score": 66.2
+    }
+  ],
+  "tier_weights": {
+    "easy": 0.14,
+    "standard": 0.28,
+    "judge": 0.28,
+    "hard": 0.3
+  }
+}

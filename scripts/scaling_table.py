@@ -80,8 +80,15 @@ def main():
                     elif r["engine"] == "packed:permavg":
                         qps_pa = r["questions_per_sec"]
         g = lambda m, k: (m[k] if m else None)
+        jb = {}
+        jb_path = RESULTS / "jevbench_summary.json"
+        if jb_path.exists():
+            for r in json.loads(jb_path.read_text())["rows"]:
+                if r["label"].startswith(slug + "_"):
+                    jb[r["label"].split("_", 1)[1]] = r["tiers"].get("hard", {}).get("accuracy")
         rows.append({
             "model": slug, "params": PARAMS.get(slug, "?"),
+            "jevbench_hard_packed": jb.get("packed"), "jevbench_hard_permavg": jb.get("permavg"), "jevbench_hard_slot": jb.get("slot"),
             "mmlu_acc_raw": g(raw["mmlu"], "accuracy"), "jmmlu_acc_raw": g(raw["jmmlu"], "accuracy"),
             "ece_raw": cal["mmlu"]["before"]["ece"] if cal["mmlu"] else g(raw["mmlu"], "ece"),
             "ece_T": cal["mmlu"]["after"]["ece"] if cal["mmlu"] else None,
@@ -99,15 +106,17 @@ def main():
             "packed_qps_s2k_q100": qps, "packed_permavg_qps_s2k_q100": qps_pa,
         })
     f = lambda x, d=3: "-" if x is None else (f"{x:.{d}f}" if isinstance(x, float) else str(x))
-    md = ["| backbone | params | B zero-shot: MMLU / JMMLU | B ECE raw / +T (T) | B + perm_avg: MMLU / JMMLU | perm_avg ECE raw / +T | 5-shot + perm_avg: MMLU | slot+LoRA: MMLU / JMMLU | slot ECE raw / +T | slot + perm_avg: MMLU | packed q/s (S=2k, Q=100) plain / perm_avg |",
-          "|---|---:|---:|---|---:|---|---:|---:|---|---:|---:|"]
+    md = ["| backbone | params | B zero-shot: MMLU / JMMLU | B ECE raw / +T (T) | B + perm_avg: MMLU / JMMLU | perm_avg ECE raw / +T | 5-shot + perm_avg: MMLU | slot+LoRA: MMLU / JMMLU | slot ECE raw / +T | slot + perm_avg: MMLU | JevBench hard (public 111): B / perm_avg / slot | packed q/s (S=2k, Q=100) plain / perm_avg |",
+          "|---|---:|---:|---|---:|---|---:|---:|---|---:|---:|---:|"]
     for r in rows:
         md.append(f"| {r['model']} | {r['params']} | {f(r['mmlu_acc_raw'])} / {f(r['jmmlu_acc_raw'])} | "
                   f"{f(r['ece_raw'])} / {f(r['ece_T'])} ({f(r['T'], 1)}) | {f(r['mmlu_acc_permavg'])} / {f(r['jmmlu_acc_permavg'])} | "
                   f"{f(r['permavg_ece_raw'])} / {f(r['permavg_ece_T'])} | {f(r['mmlu_acc_shots5_permavg'])} | "
                   f"{f(r['mmlu_acc_slot'])} / {f(r['jmmlu_acc_slot'])}{(' (' + r['slot_run'] + ')') if r['slot_run'] else ''} | "
-                  f"{f(r['slot_ece_raw'])} / {f(r['slot_ece_T'])} | {f(r['mmlu_acc_slot_permavg'])} | {f(r['packed_qps_s2k_q100'], 1)} / {f(r['packed_permavg_qps_s2k_q100'], 1)} |")
-    md.append(f"| {JEV['model']} | ? | **{JEV['mmlu_acc_raw']:.3f}** / - | {JEV['ece_raw']:.3f} (zero-shot, no T) | - | - | - | - | - | - | 30k tok in ~160 ms |")
+                  f"{f(r['slot_ece_raw'])} / {f(r['slot_ece_T'])} | {f(r['mmlu_acc_slot_permavg'])} | "
+                  f"{f(r['jevbench_hard_packed'])} / {f(r['jevbench_hard_permavg'])} / {f(r['jevbench_hard_slot'])} | "
+                  f"{f(r['packed_qps_s2k_q100'], 1)} / {f(r['packed_permavg_qps_s2k_q100'], 1)} |")
+    md.append(f"| {JEV['model']} | ? | **{JEV['mmlu_acc_raw']:.3f}** / - | {JEV['ece_raw']:.3f} (zero-shot, no T) | - | - | - | - | - | - | **0.741** (534 決定、Benchmark Heaven) | 30k tok in ~160 ms |")
     print("\n".join(md))
     dump_json({"rows": rows, "jev": JEV}, RESULTS / "scaling_table.json")
     (RESULTS / "scaling_table.md").write_text("\n".join(md) + "\n")

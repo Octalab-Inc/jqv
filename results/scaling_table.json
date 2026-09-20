@@ -3,6 +3,9 @@
     {
       "model": "qwen3-1.7b",
       "params": "1.7B",
+      "jevbench_hard_packed": 0.42342342342342343,
+      "jevbench_hard_permavg": 0.43243243243243246,
+      "jevbench_hard_slot": 0.4144144144144144,
       "mmlu_acc_raw": 0.55375,
       "jmmlu_acc_raw": 0.46625,
       "ece_raw": 0.4127147286757827,
@@ -25,6 +28,9 @@
     {
       "model": "qwen3-14b",
       "params": "14.8B",
+      "jevbench_hard_packed": 0.5495495495495496,
+      "jevbench_hard_permavg": 0.5675675675675675,
+      "jevbench_hard_slot": 0.5855855855855856,
       "mmlu_acc_raw": 0.75,
       "jmmlu_acc_raw": 0.71,
       "ece_raw": 0.20705861225724226,
@@ -47,6 +53,9 @@
     {
       "model": "qwen3-32b",
       "params": "32.8B",
+      "jevbench_hard_packed": 0.6216216216216216,
+      "jevbench_hard_permavg": 0.6396396396396397,
+      "jevbench_hard_slot": 0.6216216216216216,
       "mmlu_acc_raw": 0.80875,
       "jmmlu_acc_raw": 0.77125,
       "ece_raw": 0.13685496225953106,
