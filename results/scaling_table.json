@@ -81,6 +81,6 @@
     "params": "?",
     "mmlu_acc_raw": 0.918,
     "ece_raw": 0.031,
-    "note": "zero-shot; no temperature"
+    "note": "Hume: 1,200-item MMLU sample, API probabilities as returned; prompting condition not established"
   }
 }

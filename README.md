@@ -11,9 +11,20 @@ POST /decision
 → {"decisions": [{"probabilities": [0.01, 0.97, 0.02], "calibrated_probabilities": [...], "confidence": 0.9}, ...]}
 ```
 
+## 結論（Findings）
+
+1. **Jev の主要な推論挙動は普通の open decoder LLM で再現できる。** direct readout、shared state、sibling isolation（兄弟質問への漏れ 0、負対照 0.995）、
+   listwise な選択肢相互作用（5 番目選択肢で log-odds が動く）を 1.7B / 14B / 32B で確認した。
+2. **共有計算の高速化は本物で、「生成をやめる」こと自体はほとんど高速化にならない。** generate ≈ naive（0.9〜1.1 倍）に対し、
+   長い state × 多数質問（S=8k・Q=100）では packed / shared が naive の 53〜73 倍（MPS 上）。
+3. **Decision accuracy は今回の範囲では主に backbone capability で決まる。** 1.7B → 14B → 32B で MMLU 0.554 → 0.750 → 0.809、
+   JevBench hard 0.423 → 0.550 → 0.622。4,800 例の LoRA は 14B 以上をほぼ改善せず、Jev との差は MMLU でも JevBench hard でも約 10〜12 ポイント残る。
+4. **Calibration の「魔法」のかなりの部分は scalar correction でも再現できるが、domain shift は未解決。** 32B は MMLU で ECE 0.023（Jev の報告値 0.031）まで
+   行く一方、同じ温度は JMMLU には転移し、JevBench hard には部分的（0.274 → 0.107）、bridge には逆効果と、タスクによって最適 scale が異なる。
+
 ## 何を作ったか
 
-同一モデル・同一プロンプトで、次の 4 つの推論構造を切り替えて比較できる。
+同一モデル・同一プロンプトで、5 つの推論構造（generate / naive / kvcache / packed / shared）と、直交する 2 種類の readout（全語彙 projection / 選択肢行のみ）を切り替えて比較できる。
 
 | engine | 段階 | 構造 | 用途 |
 |---|---|---|---|
@@ -130,8 +141,8 @@ uv run scripts/isolation_test.py                                              # 
 
 ### temperature の転移（`scripts/transfer_temperature.py`, `results/transfer_qwen3-1.7b.json`）
 
-source の val で学習した T を、別の target の test にそのまま適用した。Jev の ECE 0.031 は zero-shot 値なので、
-in-distribution の対角ではなく非対角がそれとの比較対象になる。
+source の val で学習した T を、別の target の test にそのまま適用した。Jev の ECE 0.031（Hume の 1,200 問 MMLU サンプルでの測定。プロンプト条件は記事から確認できない）に対しては、
+in-distribution の対角より非対角のほうが近い比較になる。
 
 | T の学習元 → 適用先 | T | MMLU test (n=800) ECE | JMMLU test (n=800) ECE | bridge (n=30) ECE |
 |---|---:|---:|---:|---:|
@@ -319,7 +330,7 @@ Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk で�
 
 読み取れること:
 
-1. **decision training は 4,800 例でも効く。** LoRA 併用の head は B より精度が高く（MMLU +2、JMMLU +4 ポイント）、
+1. **1.7B では decision training は生の校正を大幅に改善し、精度は JMMLU で有意に改善する（MMLU の +2.1 ポイントは有意でない）。** LoRA 併用の head は B より精度が高く（MMLU +2.1、p=0.125 / JMMLU +3.9、p=0.006。「精度の読み方」節）、14B 以上では accuracy の改善は消える（Backbone スケーリング節）。
    何より raw の確率が最初から使える（ECE 0.41 → 0.11〜0.14、NLL 5.8 → 1.1）。温度を足すと ECE 0.03〜0.05、NLL 0.98 に達し、
    B + 温度（0.080、1.08）を上回る。JMMLU の ECE 0.029 は Jev の MMLU 0.031 と同水準だが、こちらは in-distribution の温度込み。
 2. **LLM を凍結して新規 head だけ学習すると B より悪い**（MMLU 0.471、−8 ポイント）。hidden state のどこに「選択肢 i の正しさ」が
@@ -347,9 +358,9 @@ Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk で�
   校正セットが取れない運用では価値があるが、val で温度を 1 つ学習できるなら CE + T のほうが良い。
 - **タスク種別をまたぐ転移はどの λ でも解けない。** bridge では全 λ で T=1 が最良で、MMLU の T を当てると ECE は 0.15〜0.19 に悪化する。
   λ=2 の bridge raw ECE（0.120）は λ=0（0.056）より悪い。
-- Jev の ECE 0.031（zero-shot）に対し、slot + LoRA + in-distribution T は JMMLU で 0.028〜0.029、MMLU で 0.044〜0.051。
+- Jev の ECE 0.031（Hume の測定、プロンプト条件は不明）に対し、slot + LoRA + in-distribution T は JMMLU で 0.028〜0.029、MMLU で 0.044〜0.051。
   「学習 + 温度」で数値上は同水準に届くが、温度なしで・分布をまたいで 0.03 を出す Jev の RLCD とは条件が違う。
-- 14B / 32B に持っていく既定値は **λ=1**（MMLU val NLL が最小: 1.089 vs λ=0 の 1.103。差はノイズ範囲なので λ=0 でも同等）。
+- 1.7B では λ=1 が MMLU val NLL 最小（1.089 vs λ=0 の 1.103）だったが差はノイズ範囲。14B で再 sweep した結果 **λ=0** を採用し、32B も λ=0 とした（Backbone スケーリング節）。
 
 ## 学習なしの精度向上: few-shot state と選択肢の巡回シフト平均
 
@@ -423,18 +434,18 @@ Jev 規模（state 23k × 5,000 問）では packed の L×L 相当（chunk で�
 ## Backbone スケーリング（`scripts/scaling_table.py`, `results/scaling_table.md`）
 
 同じコード・プロンプト・1,200 問サブセット（seed 0、val 400 / test 800）で backbone だけを変える。dense の Qwen3 に限定し、
-MoE（30B-A3B）と Qwen3.5（hybrid attention）は attention / KV 構造の議論が変わるため使わない。Jev の行は Hume の測定値（zero-shot、温度なし）。
+MoE（30B-A3B）と Qwen3.5（hybrid attention）は attention / KV 構造の議論が変わるため使わない。Jev の行は Hume の測定値（1,200 問 MMLU サンプル、API が返した確率のまま。プロンプト条件は記事から確認できない）。
 
 | backbone | params | B zero-shot: MMLU / JMMLU | B ECE raw / +T (T) | B + perm_avg: MMLU / JMMLU | perm_avg ECE raw / +T | 5-shot + perm_avg: MMLU | slot+LoRA: MMLU / JMMLU | slot ECE raw / +T | slot + perm_avg: MMLU | JevBench hard (public 111): B / perm_avg / slot | packed q/s (S=2k, Q=100) plain / perm_avg |
 |---|---:|---:|---|---:|---|---:|---:|---|---:|---:|---:|
 | qwen3-1.7b | 1.7B | 0.554 / 0.466 | 0.413 / 0.080 (12.0) | 0.584 / 0.485 | 0.195 / 0.063 | 0.578 | 0.575 / 0.505 (slot_lora) | 0.137 / 0.044 | - | 0.423 / 0.432 / 0.414 | 48.6 / 28.1 |
 | qwen3-14b | 14.8B | 0.750 / 0.710 | 0.207 / 0.042 (5.1) | 0.781 / 0.729 | 0.113 / 0.047 | 0.782 | 0.757 / 0.711 (qwen3-14b_slot_brier0) | 0.114 / 0.045 | - | 0.550 / 0.568 / 0.586 | 9.3 / 4.4 |
 | qwen3-32b | 32.8B | 0.809 / 0.771 | 0.137 / 0.023 (3.0) | 0.812 / 0.790 | 0.087 / 0.034 | - | 0.801 / 0.782 (qwen3-32b_slot_best) | 0.115 / 0.031 | 0.819 | 0.622 / 0.640 / 0.622 | 2.5 / - |
-| Jev (TypeSafe, Hume 2025) | ? | **0.918** / - | 0.031 (zero-shot, no T) | - | - | - | - | - | - | **0.741** (534 決定、Benchmark Heaven) | 30k tok in ~160 ms |
+| Jev (TypeSafe, Hume 2025) | ? | **0.918** / - | 0.031 (Hume, 1,200 問, API の確率のまま) | - | - | - | - | - | - | **0.741** (534 決定、Benchmark Heaven) | 30k tok in ~160 ms |
 
 ### 1.7B → 14B で分かったこと
 
-- **精度はほぼ backbone で決まる。** zero-shot の直接 readout で MMLU 0.554 → 0.750（+19.6）、JMMLU 0.466 → 0.710（+24.4）。
+- **今回の範囲では精度を支配する最大の要因は backbone scale だった。** zero-shot の直接 readout で MMLU 0.554 → 0.750（+19.6）、JMMLU 0.466 → 0.710（+24.4）。
   1.7B で有効だった巡回シフト平均は 14B でも同じ幅で効き（+3.1、p=0.001）、5-shot は 14B では +1.9（p=0.12）、両方で 0.782（p=0.008）。
   学習なしの 14B で 0.78、Jev の 0.918 との差は 14 ポイント。
 - **生の校正も backbone で良くなる。** 生 ECE 0.41 → 0.21、温度 12 → 5.1。温度後の ECE は 0.042（MMLU）/ 0.046（JMMLU）で、
@@ -481,10 +492,10 @@ best は step 300（val NLL 0.688）。評価は slot engine で 1 データセ�
 
 ### 1.7B → 14B → 32B の結論
 
-1. **精度は backbone でほぼ決まる。** zero-shot の直接 readout で MMLU 0.554 → 0.750 → 0.809、Jev（0.918）との差は 36 → 17 → 11 ポイント。
+1. **今回試した 4,800 例規模の decision training に比べ、精度を支配する最大の要因は backbone scale だった。** zero-shot の直接 readout で MMLU 0.554 → 0.750（+19.6）→ 0.809（+5.9）、Jev（0.918）との差は 36 → 17 → 11 ポイント。残る約 11 ポイントは backbone 自体の能力差か、Jev の大規模 post-training の効果と考えられる。
    目標の 80% は 32B の zero-shot で到達した。推論側の工夫（perm_avg）は 1.7B / 14B で +3 ポイント、32B では +0.4 に縮む。
-2. **校正は 32B + 温度 1 個で Jev の水準に届く。** ECE+T は 0.080 → 0.042 → 0.023（Jev 0.031）。温度は 12 → 5.1 → 3.0 と単調に下がり、
-   JMMLU で学習した T=2.6 を MMLU に当てても 0.031。言語をまたいだ scalar 校正で Jev の zero-shot 値に並ぶ。
+2. **MMLU 系の in- / near-distribution では scalar temperature だけで Jev の報告 ECE と同水準に達する。一方その温度は任意のタスクへ普遍的には転移しない。** ECE+T は 0.080 → 0.042 → 0.023（Jev 0.031）。温度は 12 → 5.1 → 3.0 と単調に下がり、
+   JMMLU で学習した T=2.6 を MMLU に当てても 0.031。ただし同じ T は JevBench hard では部分的にしか効かず（0.274 → 0.107）、bridge では逆効果になる。
    ただし Jev は温度なしの値で、jqv の生 ECE は 32B でも 0.137（perm_avg 後 0.087）。
 3. **4,800 例の decision training は 14B 以上で精度を上げない。** slot + LoRA は 1.7B で +2〜4 ポイント、14B で +0.5〜1.0（有意差なし）、
    32B で −0.7（p=0.38）。生の校正は改善する（ECE 0.137 → 0.115、NLL 0.95 → 0.67）が、温度後は zero-shot + T を超えない。
@@ -544,7 +555,7 @@ long_policy 9/19（perm_avg で 11/19）、multi_hop 10/18、temporal_numeric 5/
    「規則を読んで typed decision をする」方向に効いている可能性と整合する。逆に adversarial / trap / routing は 32B で満点。
 4. **生の確率のままでは Calibration 軸が壊滅する。** hard の生 ECE は 32B でも 0.27（1.7B 0.54）で、Calibration 換算 45（1.7B は 0）。
    MMLU val の T を転用するだけで ECE 0.11、Calibration 79（Jev 82.7、SemIf 72.6）まで回復する。Decision API は校正済み確率を
-   返して初めて評価に乗る。MMLU → JevBench hard への温度転移は bridge（読解型）と違って成立した。
+   返して初めて評価に乗る。MMLU → JevBench hard への温度転移は**部分的**: ECE は 0.274 → 0.107 と大きく改善するが、MMLU 内の 0.023 には遠く、転移節で定義した基準（対角 + 0.02 以内）は満たさない。MMLU ↔ JMMLU（強く転移）、MMLU → JevBench hard（部分転移）、MMLU → bridge（逆効果）という 3 段階の distribution shift が見える。
 5. **decision training（slot + LoRA）はここでも効かない。** 32B で hard 62.2%（zero-shot と同じ）、14B で 58.6%（+3.6）。
    perm_avg は 32B hard で +1.8。
 6. **速度**: 32B の生 p50 は 0.68 s（Jev 0.65 s、ただし Jev は本番 API）。Benchmark Heaven の補正（×2 + 0.15 s）を当てると 1.5 s 相当。
@@ -566,11 +577,14 @@ Jev 行の数値は Benchmark Heaven の測定値（全 534 問）を引用し�
 | [ekzhang/openjev-sglang](https://github.com/ekzhang/openjev-sglang) | ★★★★☆ | Qwen3.6-35B-A3B + SGLang radix cache で Jev 互換 API（choice / noul / rubric、prefill のみ）。TypeSafe 公式 SDK で疎通 | jqv の「本番サービング」フェーズを先行。校正は「supplied options に条件付いた確率で、正解の校正推定ではない」と明記 |
 | [r-ms/mini-jev](https://github.com/r-ms/mini-jev) | ★★★★☆ | 凍結 Qwen3-4B で option letter の logits を読む事前登録実験 | jqv の B と同じ readout。学習・共有計算・校正は扱わない |
 | [zwliJay/jev-forge](https://github.com/zwliJay/jev-forge) | ★★★☆☆ | shared prefix から dynamic candidate branch をスコアする学習・推論スタック（高 cardinality、校正、バッチ推論） | 学習スタックとしては近い。jqv は engine の ablation と校正測定に寄っている |
+| [bnsd55/jevmlx](https://github.com/bnsd55/jevmlx) | ★★★★☆ | Apple Silicon / MLX 向けの実用 Decision API。context + schema catalog を 1 回 prefill し、各 field の選択肢を broadcast KV cache に対する trie 行として 1 回のバッチ forward で評価。schema 制約付き JSON、CalibrationBundle、timing ledger | 実行構造は jqv の D1（shared KV）寄り。structured prediction 側（schema、trie、multi-field）は jqv より作り込まれている。D2 / D3 の architecture ablation は扱わない |
 | [Hydragen](https://arxiv.org/abs/2402.05099)（Juravsky et al., 2024） | システム | shared prefix への attention を全 suffix の query でまとめて計算し、KV の読み出しを共有。CodeLlama-13B で最大 32x | jqv の D3（`jqv/engine/shared.py`）はこの分解の PyTorch 実装。MPS では probe 用の 2 回目 SDPA が要るため dense packed に負ける条件がある |
 | [DeFT](https://arxiv.org/abs/2404.00242)（Yao et al., ICLR 2025） | システム | tree 構造の推論向け Flash Tree-attention。shared KV の IO を 73〜99% 削減 | jqv の packed / D3 の CUDA 実装（FlexAttention BlockMask）の先にある方向 |
 
 他に同種の実装として [cobanov/awesome-jev](https://github.com/cobanov/awesome-jev)（Jev 関連プロジェクトの一覧）、
 [rongxinzy/LightJev](https://github.com/rongxinzy/LightJev)、[shamazharikh/qwen-rlcd](https://github.com/shamazharikh/qwen-rlcd) がある。
+
+**アプリケーション / downstream**（再実装ではなく Jev を使う側）: [classifier.dev](https://classifier.dev/)（[mrmps/classifier-dev](https://github.com/mrmps/classifier-dev)）は TypeSafe Jev を backbone に大量分類を HTTP / CLI / MCP で提供し、Jev が使えないときは LLM に fallback する（最大 20 決定）。jqv の `/v1/systemone` はこの種のクライアントからも同じ wire format で呼べる。
 
 jqv の独自性は次の 4 点にある。
 
@@ -604,9 +618,10 @@ jqv の独自性は次の 4 点にある。
 - **校正**: 1-token readout の生 logits は非常に尖っており（MMLU で mean confidence ≈ 0.96, ECE ≈ 0.38）、
   temperature scaling だけで ECE は 0.06 前後まで落ちる。「0.8 と言ったら 8 割当たる」の最初の一歩はモデル改造なしで到達できる。
 
-## 次フェーズ（未実装）
+## 今後の課題
 
-- **C（実装済み）** — slot / pointer head + LoRA は上の C 節。LLM 凍結 + 新規 head は B より劣る（−8 ポイント）ので、表現側を動かす LoRA が必須。
-- **RL / preference optimization** — CE + λ·Brier では temperature scaling を超えなかった（上の E 節）。分布をまたいで校正を保つには
-  RLCD 型（結果に基づく proper scoring）の post-training が次の候補。
-- **本番サービング** — Linux GPU で vLLM + Automatic Prefix Caching、同じ `/decision` エンドポイント。
+- **RLCD / proper scoring の本格評価** — CE + λ·Brier では temperature scaling を超えなかった（E 節）。分布をまたいで校正を保つには結果ベースの proper scoring による post-training が次の候補。
+- **CUDA / FlexAttention / Hydragen 型のサービング** — D3 は MPS では probe 用に SDPA が 2 回必要で、32B で packed の 1.5 倍にとどまる。CUDA では block-sparse カーネル 1 回にできる。vLLM / SGLang の prefix caching 上で同じ `/decision`・`/v1/systemone` を出す。
+- **domain-shift calibration** — MMLU ↔ JMMLU は転移、JevBench hard は部分転移、bridge は逆効果。タスク種別ごとの温度、または温度に依存しない校正学習。
+- **JevBench の held-out 303 問と judge tier** — 公開 endpoint を立てて Benchmark Heaven に bench request を出す。弱い family（long_policy、temporal_numeric）への few-shot / perm_avg の限定適用。
+- **実アプリケーション** — classifier.dev 型の大量分類、grep 型のルーティングを `/v1/systemone` の上に載せて、選択的精度（p ≥ 0.9 で 44% を精度 0.97）を運用指標として使う。

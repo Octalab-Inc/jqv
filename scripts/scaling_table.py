@@ -17,7 +17,7 @@ import re
 from _common import RESULTS, dump_json
 
 PARAMS = {"qwen3-1.7b": "1.7B", "qwen3-4b": "4B", "qwen3-8b": "8B", "qwen3-14b": "14.8B", "qwen3-32b": "32.8B"}
-JEV = {"model": "Jev (TypeSafe, Hume 2025)", "params": "?", "mmlu_acc_raw": 0.918, "ece_raw": 0.031, "note": "zero-shot; no temperature"}
+JEV = {"model": "Jev (TypeSafe, Hume 2025)", "params": "?", "mmlu_acc_raw": 0.918, "ece_raw": 0.031, "note": "Hume: 1,200-item MMLU sample, API probabilities as returned; prompting condition not established"}
 
 
 def jload(path):
@@ -116,7 +116,7 @@ def main():
                   f"{f(r['slot_ece_raw'])} / {f(r['slot_ece_T'])} | {f(r['mmlu_acc_slot_permavg'])} | "
                   f"{f(r['jevbench_hard_packed'])} / {f(r['jevbench_hard_permavg'])} / {f(r['jevbench_hard_slot'])} | "
                   f"{f(r['packed_qps_s2k_q100'], 1)} / {f(r['packed_permavg_qps_s2k_q100'], 1)} |")
-    md.append(f"| {JEV['model']} | ? | **{JEV['mmlu_acc_raw']:.3f}** / - | {JEV['ece_raw']:.3f} (zero-shot, no T) | - | - | - | - | - | - | **0.741** (534 決定、Benchmark Heaven) | 30k tok in ~160 ms |")
+    md.append(f"| {JEV['model']} | ? | **{JEV['mmlu_acc_raw']:.3f}** / - | {JEV['ece_raw']:.3f} (Hume, 1,200 問, API の確率のまま) | - | - | - | - | - | - | **0.741** (534 決定、Benchmark Heaven) | 30k tok in ~160 ms |")
     print("\n".join(md))
     dump_json({"rows": rows, "jev": JEV}, RESULTS / "scaling_table.json")
     (RESULTS / "scaling_table.md").write_text("\n".join(md) + "\n")
