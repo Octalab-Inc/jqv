@@ -58,10 +58,12 @@ def main():
         raise SystemExit(f"harness not found at {JEVBENCH} (git clone https://github.com/fstandhartinger/jevbench)")
     run_dir = RESULTS / "jevbench" / a.label
     if run_dir.exists():
-        if not a.force:
-            raise SystemExit(f"{run_dir} exists; pass --force to replace")
-        shutil.rmtree(run_dir)
-    run_dir.mkdir(parents=True)
+        clashing = [t for t in a.tiers if (run_dir / t).exists()]
+        if clashing and not a.force:
+            raise SystemExit(f"{run_dir} already has tiers {clashing}; pass --force to replace those tiers")
+        for t in clashing:  # --force replaces only the selected tiers; other tiers' results are kept
+            shutil.rmtree(run_dir / t)
+    run_dir.mkdir(parents=True, exist_ok=True)
     harness_commit = subprocess.run(["git", "-C", str(JEVBENCH), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     env = {**os.environ, "JQV_MODEL": a.model, "JQV_ENGINE": a.engine, "JQV_PERM_AVG": "1" if a.perm_avg else "",
            **({"JQV_HEAD_DIR": a.head_dir} if a.head_dir else {})}
@@ -72,9 +74,12 @@ def main():
         print(f"[jevbench_run] starting server model={a.model} engine={a.engine} perm_avg={a.perm_avg} head={a.head_dir}", flush=True)
         wait_health(a.port, a.load_timeout)
         print("[jevbench_run] server healthy", flush=True)
-        (run_dir / "config.json").write_text(json.dumps({"model": a.model, "engine": a.engine, "perm_avg": a.perm_avg,
-                                                         "head_dir": a.head_dir, "harness_commit": harness_commit,
-                                                         "tiers": a.tiers, "limit": a.limit}, indent=2))
+        cfg_path = run_dir / "config.json"
+        cfg = json.loads(cfg_path.read_text()) if cfg_path.exists() else {}
+        cfg.update({"model": a.model, "engine": a.engine, "perm_avg": a.perm_avg, "head_dir": a.head_dir,
+                    "harness_commit": harness_commit, "limit": a.limit,
+                    "tiers": sorted(set(cfg.get("tiers", [])) | set(a.tiers))})
+        cfg_path.write_text(json.dumps(cfg, indent=2))
         for tier in a.tiers:
             d = run_dir / tier
             d.mkdir()

@@ -13,6 +13,8 @@ the state once). This is the protocol JevBench's `typesafe` adapter speaks (gith
 
 from __future__ import annotations
 
+import json
+
 from jqv.types import Question
 
 NOUL_LABELS = ["no", "yes"]  # presentation order; the answer is p("yes") regardless
@@ -61,10 +63,17 @@ def format_answer(meta: dict, probs: list[float]) -> dict:
     return {"type": "score", "probabilities": dist, "score": expected}
 
 
+def render_state(state) -> str:
+    """TypeSafe accepts string or JSON state. Structured state is shown to the model as pretty-printed JSON."""
+    if isinstance(state, str):
+        return state
+    if isinstance(state, (dict, list)):
+        return json.dumps(state, ensure_ascii=False, indent=2)
+    raise SystemOneError("state must be a string or a JSON object/array")
+
+
 def decide_systemone(engine, body: dict, model_name: str) -> dict:
-    state = body.get("state")
-    if not isinstance(state, str):
-        raise SystemOneError("state must be a string")
+    state = render_state(body.get("state"))
     questions = body.get("questions")
     if not isinstance(questions, dict) or not questions:
         raise SystemOneError("questions must be a non-empty object")

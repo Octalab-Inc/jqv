@@ -52,6 +52,15 @@ def test_answers_follow_the_typesafe_shapes():
     assert out["model"] == "jqv-test" and out["usage"]["input_tokens"] > 0 and out["usage"]["output_tokens"] == 0
 
 
+def test_json_state_is_rendered():
+    body = {"state": {"policy": ["a", "b"], "n": 1}, "questions": {"d": {"type": "noul", "instructions": "Ok?", "criteria": None}}}
+    out = decide_systemone(FakeEngine(), body, "m")
+    assert out["answers"]["d"]["type"] == "noul"
+    import pytest
+    with pytest.raises(Exception):
+        decide_systemone(FakeEngine(), {"state": 3, "questions": {"d": {"type": "noul", "instructions": "x"}}}, "m")
+
+
 def test_format_answer_argmax():
     a = format_answer({"type": "choice", "labels": ["x", "y"]}, [0.3, 0.7])
     assert a["choice"] == "y"

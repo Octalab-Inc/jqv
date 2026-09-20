@@ -1,0 +1,13 @@
+{
+  "model": "Qwen/Qwen3-1.7B",
+  "engine": "packed",
+  "perm_avg": true,
+  "head_dir": null,
+  "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+  "tiers": [
+    "easy",
+    "standard",
+    "hard"
+  ],
+  "limit": null
+}
