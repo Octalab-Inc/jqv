@@ -25,7 +25,8 @@ fp32 参照との数値一致、bf16 で現行 D3 と同じ decision logits、S=
 - PyTorch MPS と MLX はテンソルを直接共有しないので、microbenchmark は同じ入力を両方に渡して比較し（numpy 経由）、end-to-end は
   PyTorch から kernel を呼ぶのではなく mlx-lm の Qwen3 で最小の推論経路を組んで確認する。
 - kernel の型: FlashAttention 型の streaming softmax（K/V を tile で読み、running max m・running sum l・running output o を更新し、最後に O と log l + m を出す）。
-  参考実装として MLX custom Metal の attention 実験リポジトリ（ユーザー言及の `mlx-metal-kernels`。GitHub 検索では同名が見つからないので着手時に所在を確認）。
+  参考実装: [manishklach/mlx-metal-kernels](https://github.com/manishklach/mlx-metal-kernels)（2026-08、MLX custom Metal の fast attention / decode / KV-cache の実験。
+  生産用ではないが streaming attention の叩き台になる。着手時に内容を確認）。
 - テストの雛形: `tests/test_engines_equivalence.py`（fp32 は一致、bf16 は許容差）。
 
 # Scope
