@@ -52,9 +52,46 @@ def decomposed(eng, title, out):
     return ok
 
 
+def chat_answer(rt, user: str, thinking: bool, max_new: int) -> tuple[str, int]:
+    import re
+
+    import torch
+
+    tok, model = rt.tokenizer, rt.model
+    text = tok.apply_chat_template([{"role": "user", "content": user}], tokenize=False, add_generation_prompt=True, enable_thinking=thinking)
+    enc = tok(text, return_tensors="pt").to(rt.device)
+    with torch.no_grad():
+        out = model.generate(**enc, max_new_tokens=max_new, do_sample=False)
+    gen = out[0, enc["input_ids"].shape[1]:]
+    ans = tok.decode(gen, skip_special_tokens=True)
+    tail = ans.split("</think>")[-1]
+    nums = re.findall(r"\b[0-9]\b", tail)
+    return (nums[-1] if nums else "?"), int(gen.shape[0])
+
+
+def generation_baseline(rt, n_words: int, max_new: int, out):
+    """Ordinary chat generation for the first n_words cases, thinking off and on: the answer the model writes at the end."""
+    res = {}
+    for thinking in (False, True):
+        ok = 0
+        title = f"chat generation, thinking {'ON' if thinking else 'OFF'}"
+        print(f"== {title} (first {n_words} words)")
+        for word, letter, ans in CASES[:n_words]:
+            user = f"How many times does the letter '{letter}' appear in the word '{word}'?\nchoices: 0 / 1 / 2 / 3 / 4 / 5"
+            pred, n_tok = chat_answer(rt, user, thinking, max_new)
+            ok += pred == str(ans)
+            out.append({"mode": title, "word": word, "letter": letter, "truth": ans, "pred": pred, "tokens": n_tok})
+            print(f"  {word:12s} '{letter}' truth={ans} answer={pred} {'ok ' if pred == str(ans) else 'NG '} ({n_tok} tokens)")
+        print(f"  accuracy {ok}/{n_words}")
+        res["chat_thinking_on" if thinking else "chat_thinking_off"] = ok
+    return res
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--engine", default="packed")
+    ap.add_argument("--chat-words", type=int, default=5, help="words to also answer by ordinary generation (0 = skip)")
+    ap.add_argument("--chat-max-new", type=int, default=900)
     add_model_args(ap)
     a = ap.parse_args()
     rt = load_rt(a)
@@ -68,6 +105,9 @@ def main():
         "decomposed": decomposed(eng, "decomposed: one yes/no branch per position on a shared spelled state, counted outside", out),
         "n": len(CASES), "model": rt.model_id, "engine": a.engine,
     }
+    if a.chat_words:
+        summary.update(generation_baseline(rt, a.chat_words, a.chat_max_new, out))
+        summary["chat_words"] = a.chat_words
     print(summary)
     dump_json({"summary": summary, "rows": out}, RESULTS / f"letter_count_{slug(rt.model_id)}.json")
 
