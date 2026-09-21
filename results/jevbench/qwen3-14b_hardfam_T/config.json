@@ -1,0 +1,12 @@
+{
+  "model": "Qwen/Qwen3-14B",
+  "engine": "slot",
+  "perm_avg": false,
+  "head_dir": "results/train/14b-hardfam/best",
+  "temperature_file": "results/mmlu_slot_qwen3-14b_14b-hardfam_temperature.json",
+  "harness_commit": "7ce310c7262ed49cc85853339a8a42459298e3f3",
+  "limit": null,
+  "tiers": [
+    "hard"
+  ]
+}

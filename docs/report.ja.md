@@ -705,6 +705,64 @@ scenario 内での引き直し、parameter 空間の拡大）行い、32B で 3 
 テスト: `tests/test_synth.py`（25 件）が、各 scenario の `facts` 上書きによる手計算ケース、トレースの集計、item の不変条件、
 split の重複排除、loader の往復を検査する。
 
+## 弱い family への targeted LoRA（14B。合成データ 70% + MMLU 30%）
+
+MMLU auxiliary_train だけで学習した slot + LoRA は 14B 以上で精度を上げなかった（C 節、Backbone スケーリング節）。同じ head と LoRA を、
+前節の合成データ（long_policy / temporal_numeric / probability の train 各 2,000 問）と MMLU の混合で学習し、弱い family が動くかを 14B で判定した。
+
+設定: slot head + LoRA r=16、λ=0（CE のみ）、600 step × batch 8（micro 2 × 累積 4、gradient checkpointing）、max_len 4096、
+`--train-mix synth:long_policy=0.25,synth:temporal_numeric=0.25,synth:probability=0.2,mmlu=0.3`（バッチごとにソースを重みで 1 つ選ぶので、
+300 token の MMLU と 3k token の約款が同じバッチに混ざらない）、検証は synth dev 各 96 問 + MMLU val 64 問を 100 step ごと。
+学習は 14B で約 10.5 時間（45〜50 秒/step。途中 2 時間ほど、誤って並走させた評価ジョブのため swap に落ちて 5 分/step に劣化した）。
+評価は synth test（family ごと 500 問）と MMLU test 800 の対応比較（`scripts/compare_runs.py`）、JevBench public hard 111（サーバが校正済み確率を返す構成。
+温度は MMLU val で再学習した T=1.80）。
+
+| 評価（14B） | zero-shot | targeted LoRA | Δ [95% CI] | McNemar p |
+|---|---:|---:|---:|---:|
+| synth long_policy test（500） | 0.356 | **0.566** | +0.210 [+0.158, +0.266] | <0.001 |
+| synth temporal_numeric test（500） | 0.272 | **0.694** | +0.422 [+0.364, +0.482] | <0.001 |
+| synth probability test（500） | 0.482 | **0.752** | +0.270 [+0.214, +0.330] | <0.001 |
+| MMLU test（800） | 0.750 | 0.760 | +0.010 [−0.007, +0.028] | 0.35 |
+| JevBench public hard（111、served T） | 0.550（61/111） | **0.604**（67/111） | +0.054 | - |
+
+gate（synth test で 3 family 中 2 以上が +10 pt かつ p < 0.01、MMLU が −1 pt 以内）は 3 family とも通過、MMLU は +1.0 で退行なし。32B に進む。
+
+| 校正（T=1 の生の確率） | zero-shot ECE / 平均 confidence | LoRA ECE / 平均 confidence |
+|---|---:|---:|
+| synth long_policy test | 0.593 / 0.95 | **0.070** / 0.64 |
+| synth temporal_numeric test | 0.672 / 0.94 | **0.050** / 0.74 |
+| synth probability test | 0.423 / 0.90 | **0.054** / 0.80 |
+| MMLU test（生 / +T） | 0.207 / 0.042（T=5.1） | 0.137 / -（T=1.80） |
+| JevBench hard（served T） | 0.126 | **0.102** |
+
+選択的精度（synth test、LoRA は T=1）: probability は p ≥ 0.9 で 44% を精度 0.95、temporal_numeric は p ≥ 0.7 で 64% を 0.77、
+long_policy は p ≥ 0.7 で 41% を 0.71。zero-shot は p ≥ 0.9 でも 69〜85% を精度 0.29〜0.51 で「通す」ので運用に使えない。
+
+JevBench hard の family 別（正解 / 問題数、zero-shot → LoRA）: long_policy 5 → 8 / 19、temporal_numeric 5 → **3** / 15、probability 5 → 6 / 10、
+tradeoff 1 → 3 / 6、ambiguous 4 → 5 / 7、trap 7 → 8 / 8、他は不変。
+
+synth test の scenario 別（LoRA、正解率、括弧は誤誘導メモに従った割合）: long_policy は equipment_breakdown 0.66、home_water 0.61、
+sla_credits 0.58、relocation 0.52、trip_cancellation 0.45。temporal_numeric は service_months 0.88、unit_threshold 0.73、business_day 0.71、
+warranty 0.69、prorated_invoice 0.56、dst_cutoff 0.50（0.90）。probability は supplier_mix 0.93、draw_outcomes 0.88、screening 0.84、
+acceptance 0.73、redundancy 0.61、ev_choice 0.54。誤誘導メモに従う割合は temporal_numeric の 3-hop で 0.95 → 0.12 に落ちた。
+hops 別の精度は LoRA で 0.62 / 0.67 / 0.67 / 0.74（2〜5 hop）と単調に落ちず、long_policy の 6-hop（サブリミット内で支払う決定、n=30）だけ
+0.57 → 0.27 に悪化した。
+
+読み取れること:
+
+1. **decision training が 14B で初めて精度を動かした。** MMLU だけの学習では +0.7 pt だったものが、狙った family の合成データでは
+   in-distribution の test で +21〜42 pt、JevBench public hard で +5.4 pt（61 → 67 問。n=111 の標準誤差は約 4.7 pt なので単独では有意でないが方向は一致）。
+2. **転移は family によって不均一。** long_policy は JevBench で +3 問、probability +1 問に対し、temporal_numeric は synth test で +42 pt なのに
+   JevBench では 5 → 3 問。合成の temporal シナリオ（月末規則、営業日、DST、単位換算）が JevBench の temporal 問題の型を覆っていないか、
+   head がテンプレートを学習した可能性がある。dst_cutoff は学習後も 90% で誤誘導メモに従っている。
+3. **生の確率がそのまま使える。** 学習後の head は合成分布上で ECE 0.05〜0.07（T=1）、MMLU の温度は 5.1 → 1.8 に下がる。
+   E 節で見た「学習は温度を内蔵する」性質と同じ。JevBench hard の served ECE も 0.126 → 0.102。
+4. **MMLU は 30% の replay で退行しない**（+1.0、p=0.35）。
+5. 但し書き: synth test は train とテンプレートを共有する（train は事実段落だけ言い換え）ので、in-distribution の数値は汎化を過大評価する。
+   外部の物差しは JevBench で、public 111 問の family あたり 10〜19 問しかない。
+
+次: 同じ recipe を 32B で学習し（micro 1 × 累積 8 でメモリを抑える）、synth test、MMLU 800、JMMLU 800、JevBench public hard を同じ手順で測る。
+
 ## 文字数え問題（"how many 'r' are in strawberry?"）を decision readout で解けるか
 
 LLM が苦手な文字単位の数え上げを、生成せずに分布を読む jqv でどう扱えるかの小さな probe（`scripts/letter_count_probe.py`、
