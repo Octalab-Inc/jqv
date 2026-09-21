@@ -2,6 +2,7 @@
 name = "jqv"
 version = "0.1.0"
 description = "Qwen-based Decision API: shared-state, branch-isolated, non-generative probability readout (Jev-style PoC)"
+license = "Apache-2.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "torch>=2.4",
