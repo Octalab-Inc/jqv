@@ -20,7 +20,8 @@ from jqv.synth.common import Names, SplitWriter
 MODULES = {"temporal_numeric": "jqv.synth.temporal", "probability": "jqv.synth.probability", "long_policy": "jqv.synth.policy"}
 
 
-def generate_family(family: str, counts: dict[str, int], seed: int, out_dir: Path, max_tries_factor: int = 20) -> dict:
+def generate_family(family: str, counts: dict[str, int], seed: int, out_dir: Path, max_tries_factor: int = 20,
+                    apply_paraphrase: bool = True) -> dict:
     mod = importlib.import_module(MODULES[family])
     writer = SplitWriter(family, out_dir, seed)
     t0 = time.time()
@@ -44,6 +45,13 @@ def generate_family(family: str, counts: dict[str, int], seed: int, out_dir: Pat
         if made < n:
             print(f"  [{family}/{split}] WARNING only {made}/{n} unique items after {tries} tries", file=sys.stderr)
     paths = writer.write()
+    if apply_paraphrase:
+        from jqv.synth.paraphrase import apply_patch
+
+        for split, p in paths.items():
+            n = apply_patch(p)
+            if n:
+                print(f"  [{family}/{split}] re-applied paraphrase patch to {n} items")
     summary = writer.summary()
     (out_dir / family / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
     for split, p in paths.items():
@@ -59,12 +67,13 @@ def main():
     ap.add_argument("--n-test", type=int, default=500)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="data/synth")
+    ap.add_argument("--no-paraphrase-patch", action="store_true", help="do not re-apply <split>.paraphrase.jsonl after generating")
     a = ap.parse_args()
     fams = list(FAMILIES) if a.family == "all" else [a.family]
     counts = {"train": a.n_train, "dev": a.n_dev, "test": a.n_test}
     for fam in fams:
         print(f"== {fam}: {counts} seed={a.seed}")
-        s = generate_family(fam, counts, a.seed, Path(a.out))
+        s = generate_family(fam, counts, a.seed, Path(a.out), apply_paraphrase=not a.no_paraphrase_patch)
         for split, d in s.items():
             print(f"  {split}: n={d['n']} hops={d['hops_hist']} qtype={d['qtype']} tokens={d['state_tokens']}")
 

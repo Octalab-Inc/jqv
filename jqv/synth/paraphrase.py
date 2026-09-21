@@ -128,6 +128,9 @@ def main():
         for pi in rng.sample(cands, min(a.per_item, len(cands))):
             todo.append((i, pi, recs[i]["state"].split("\n")[pi]))
     print(f"{a.family}/{a.split}: {len(recs)} items, {len(todo)} candidate paragraphs, model {a.model}, time box {a.max_minutes} min", flush=True)
+    import torch
+
+    torch.manual_seed(a.seed)
     tok, model, device = load_model(a.model)
     t0 = time.time()
     done = accepted = 0
@@ -151,13 +154,51 @@ def main():
         eta = (len(todo) - done) / rate / 60 if rate else float("nan")
         print(f"  {done}/{len(todo)} paragraphs, accepted {accepted} ({accepted / done:.0%}), {rate:.2f}/s, elapsed {el / 60:.1f} min, "
               f"ETA {min(eta, a.max_minutes - el / 60):.1f} min", flush=True)
-    for ri, pis in changed.items():
-        recs[ri].setdefault("meta", {})["paraphrased"] = sorted(pis)
-        recs[ri]["meta"]["paraphrase_model"] = a.model
+    patch_path = path.with_suffix(".paraphrase.jsonl")
+    with patch_path.open("a") as pf:
+        for ri, pis in changed.items():
+            recs[ri].setdefault("meta", {})["paraphrased"] = sorted(set(recs[ri]["meta"].get("paraphrased", []) + pis))
+            recs[ri]["meta"]["paraphrase_model"] = a.model
+            lines = recs[ri]["state"].split("\n")
+            pf.write(json.dumps({"id": recs[ri]["id"], "paragraphs": {str(pi): lines[pi] for pi in pis}, "model": a.model}, ensure_ascii=False) + "\n")
     with path.open("w") as f:
         for r in recs:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    print(f"wrote {path}: {len(changed)} items changed ({accepted} paragraphs) in {(time.time() - t0) / 60:.1f} min", flush=True)
+    print(f"wrote {path}: {len(changed)} items changed ({accepted} paragraphs) in {(time.time() - t0) / 60:.1f} min; patch appended to {patch_path}", flush=True)
+
+
+def apply_patch(split_path: Path) -> int:
+    """Re-apply a saved paraphrase patch (train.paraphrase.jsonl) to a regenerated split. Returns the number of items changed."""
+    patch_path = split_path.with_suffix(".paraphrase.jsonl")
+    if not patch_path.exists():
+        return 0
+    patches: dict[str, dict] = {}
+    for line in patch_path.read_text().splitlines():
+        if line.strip():
+            d = json.loads(line)
+            patches.setdefault(d["id"], {"paragraphs": {}, "model": d["model"]})["paragraphs"].update(d["paragraphs"])
+    recs = [json.loads(l) for l in split_path.read_text().splitlines() if l.strip()]
+    n = 0
+    for r in recs:
+        pt = patches.get(r["id"])
+        if not pt:
+            continue
+        lines = r["state"].split("\n")
+        ok = True
+        for k, text in pt["paragraphs"].items():
+            if int(k) < len(lines):
+                lines[int(k)] = text
+            else:
+                ok = False
+        if ok:
+            r["state"] = "\n".join(lines)
+            r.setdefault("meta", {})["paraphrased"] = sorted(int(k) for k in pt["paragraphs"])
+            r["meta"]["paraphrase_model"] = pt["model"]
+            n += 1
+    with split_path.open("w") as f:
+        for r in recs:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    return n
 
 
 if __name__ == "__main__":
