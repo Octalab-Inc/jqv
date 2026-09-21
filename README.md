@@ -5,7 +5,7 @@
 > pass (no decoding), with a single fitted temperature for calibrated probabilities. It serves TypeSafe's wire format
 > (`POST /v1/systemone`). The configuration measured by Benchmark Heaven in JevBench v1.2.7 (partial row, Qwen3-32B zero-shot)
 > and the instructions to run it on your own hardware are in [docs/jevbench-serving.md](docs/jevbench-serving.md).
-> The rest of this README (experiments, findings, engine comparison) is in Japanese.
+> The rest of this README (experiments, findings, engine comparison) is in Japanese. License: Apache-2.0 (see `LICENSE`).
 
 TypeSafe の Jev（[Hume の推定](https://archerhume.com/posts/jevs-architecture-unmasked/?v=3)）と
 PFN の Preference API / [Insight Scan](https://www.preferred.jp/ja/news/pr20250508) に共通する
