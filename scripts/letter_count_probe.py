@@ -64,9 +64,16 @@ def chat_answer(rt, user: str, thinking: bool, max_new: int) -> tuple[str, int]:
         out = model.generate(**enc, max_new_tokens=max_new, do_sample=False)
     gen = out[0, enc["input_ids"].shape[1]:]
     ans = tok.decode(gen, skip_special_tokens=True)
+    n_tok = int(gen.shape[0])
+    if n_tok >= max_new and tok.eos_token_id not in gen.tolist() and "</think>" not in ans:
+        return "truncated", n_tok  # never reached an answer within the token cap
     tail = ans.split("</think>")[-1]
+    for pat in (r"\\boxed\{\s*([0-9])\s*\}", r"(?i)answer[^0-9]{0,40}?([0-9])\b", r"\*\*([0-9])\*\*", r"\b([0-9])\s*times?\b"):
+        m = re.findall(pat, tail)
+        if m:
+            return m[-1], n_tok
     nums = re.findall(r"\b[0-9]\b", tail)
-    return (nums[-1] if nums else "?"), int(gen.shape[0])
+    return (nums[-1] if nums else "?"), n_tok
 
 
 def generation_baseline(rt, n_words: int, max_new: int, out):
@@ -91,7 +98,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--engine", default="packed")
     ap.add_argument("--chat-words", type=int, default=5, help="words to also answer by ordinary generation (0 = skip)")
-    ap.add_argument("--chat-max-new", type=int, default=900)
+    ap.add_argument("--chat-max-new", type=int, default=1500)
     add_model_args(ap)
     a = ap.parse_args()
     rt = load_rt(a)
