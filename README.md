@@ -1,5 +1,12 @@
 # jqv — Qwen ベース Decision API（Jev 簡易版）
 
+> **English summary.** jqv is a Decision API on a stock Qwen3 decoder: the state is prefilled once, every question runs as an
+> isolated branch behind a block attention mask, and the answer is read directly from the option-letter logits in one forward
+> pass (no decoding), with a single fitted temperature for calibrated probabilities. It serves TypeSafe's wire format
+> (`POST /v1/systemone`). The configuration measured by Benchmark Heaven in JevBench v1.2.7 (partial row, Qwen3-32B zero-shot)
+> and the instructions to run it on your own hardware are in [docs/jevbench-serving.md](docs/jevbench-serving.md).
+> The rest of this README (experiments, findings, engine comparison) is in Japanese.
+
 TypeSafe の Jev（[Hume の推定](https://archerhume.com/posts/jevs-architecture-unmasked/?v=3)）と
 PFN の Preference API / [Insight Scan](https://www.preferred.jp/ja/news/pr20250508) に共通する
 「**生成せず、共有 state に対する多数の質問へ確率分布を直接返す**」構造を、オープン LLM（Qwen3）だけで再現する PoC。
