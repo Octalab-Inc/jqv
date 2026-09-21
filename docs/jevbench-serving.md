@@ -4,8 +4,10 @@ jqv is a Decision API on a stock decoder LLM: the state is prefilled once, every
 branch (block attention mask, no cross-question leakage), and the answer is read directly from the option-letter
 logits in one forward pass, with no decoding. It serves TypeSafe's wire format (`POST /v1/systemone`), so the
 JevBench `typesafe` adapter works unchanged. This page gives the exact configuration that Benchmark Heaven measured
-as a partial row in JevBench v1.2.7 ([issue #6](https://github.com/fstandhartinger/jevbench/issues/6)) and how to
-run it on your own hardware. The full experimental report is in [report.md](report.md).
+as a partial row in JevBench v1.2.7 ([issue #6](https://github.com/fstandhartinger/jevbench/issues/6)) and then, from
+this repository at commit 0189b67 on their own RunPod H100 NVL (torch 2.11 + CUDA 12.8), as a ranked row in v1.2.8
+([issue #9](https://github.com/fstandhartinger/jevbench/issues/9): #8 of 36, JevBench Score 70.1), and how to run it
+on your own hardware. The full experimental report is in [report.md](report.md).
 
 ## Measured configuration
 
@@ -94,13 +96,13 @@ uv run python scripts/jevbench_families.py         # hard tier by family
 ## Notes on other hardware
 
 - The `packed` engine builds a 4D additive attention mask and runs through PyTorch SDPA; it is exercised on MPS in
-  our tests. On CUDA it should work unchanged (`JQV_DEVICE=cuda`), but we have not run it there. If the masked path
-  is a problem on your stack, `JQV_ENGINE=kvcache` (shared KV cache, batched questions) and `JQV_ENGINE=naive` (one
+  our tests, and Benchmark Heaven ran it unchanged on an H100 NVL (torch 2.11 + CUDA 12.8) for v1.2.8 with the
+  device auto-detected. If the masked path is a problem on your stack, `JQV_ENGINE=kvcache` (shared KV cache, batched questions) and `JQV_ENGINE=naive` (one
   question per forward) produce the same choice logits; `tests/test_engines_equivalence.py` checks that (exact in
   FP32, within BF16 rounding otherwise).
 - BF16 logits differ across hardware by rounding only; on our machine the served argmax matched the FP32 result on
   every checked item.
-- Latency: on the M5 Max the raw single-decision p50 was 0.65 s on the public standard tier. A CUDA GPU will be faster.
+- Latency: on the M5 Max the raw single-decision p50 was 0.65 s on the public standard tier; on the maintainers' H100 it was 0.75 s including the Germany-Canada round trip (hard-tier p50 0.81 s, p95 1.53 s).
 - Other options: `JQV_PERM_AVG=1` averages over the cyclic rotations of the option order (+2 pt on the hard tier
   in our runs, at 2x the latency); `JQV_HEAD_DIR` loads a trained slot head + LoRA (not part of the measured
   configuration). Backbones `Qwen/Qwen3-14B` and `Qwen/Qwen3-1.7B` work with their own temperature files in

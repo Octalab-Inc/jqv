@@ -43,10 +43,13 @@ than one forward per question on an Apple M5 Max.
 | Qwen3-32B | 0.809 | 0.771 | 0.137 / 0.023 | 0.622 |
 | Jev (TypeSafe; Hume / Benchmark Heaven) | 0.918 | - | 0.031 | 0.741 |
 
-Benchmark Heaven measured the 32B zero-shot configuration in [JevBench v1.2.7](https://github.com/fstandhartinger/jevbench/blob/v1.2.7/RESULTS-v1.2.md)
-(partial row, not ranked, because the endpoint was submitter-operated): easy 1.000, standard 0.958, judge 0.925, public hard
-0.622, Calibration 74.9, Score 67.2. A rankable re-run on the maintainers' hardware has been requested
-([jevbench#9](https://github.com/fstandhartinger/jevbench/issues/9)).
+Benchmark Heaven measured the 32B zero-shot configuration twice: first through a tunnel to our machine
+([JevBench v1.2.7](https://github.com/fstandhartinger/jevbench/blob/v1.2.7/RESULTS-v1.2.md), a partial row because the
+endpoint was submitter-operated) and then, after this code was published, on their own RunPod H100 from commit 0189b67
+([JevBench v1.2.8](https://github.com/fstandhartinger/jevbench/tree/v1.2.8), [jevbench#9](https://github.com/fstandhartinger/jevbench/issues/9)).
+The full run is a ranked row: **#8 of 36, JevBench Score 70.1** (Intelligence 86.1, Calibration 79.0, Speed 74.6, Cost 47.5);
+easy 1.000, standard 0.958, judge 0.925, hard 0.645 on all 220 items (Jev 1.13: 0.741); p50 0.75 s raw from Germany to a pod in
+Canada; $0.0564 per 1,000 decisions at the base model's public tariff.
 
 Findings, in one line each (details in the report):
 
@@ -55,7 +58,7 @@ Findings, in one line each (details in the report):
 2. The speed-up comes from sharing the state, not from "not generating": generate ≈ naive, shared engines 53-73x at
    long states.
 3. Accuracy is set mainly by backbone scale; a slot head + LoRA trained on 4,800 examples helps at 1.7B and not at 14B/32B,
-   and the gap to Jev stays at 10-12 points on MMLU and JevBench hard alike.
+   and the gap to Jev stays at about 10 points on MMLU (10.9) and JevBench hard (9.6) alike.
 4. A scalar temperature reaches Jev's reported ECE in and near the fitting distribution (MMLU 0.023), transfers across
    languages (MMLU ↔ JMMLU), transfers partially to JevBench hard and is harmful on a reading-type task.
 5. Option-order averaging (`perm_avg`) is a training-free +3 points at 1.7B/14B and cancels the position and letter priors.
