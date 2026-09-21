@@ -1,0 +1,210 @@
+{
+  "qwen3-1.7b_packed_T": {
+    "long_policy": {
+      "n": 19,
+      "correct": 7,
+      "accuracy": 0.3684210526315789
+    },
+    "probability": {
+      "n": 10,
+      "correct": 3,
+      "accuracy": 0.3
+    },
+    "temporal_numeric": {
+      "n": 15,
+      "correct": 3,
+      "accuracy": 0.2
+    },
+    "ambiguous": {
+      "n": 7,
+      "correct": 3,
+      "accuracy": 0.42857142857142855
+    },
+    "multi_hop": {
+      "n": 18,
+      "correct": 8,
+      "accuracy": 0.4444444444444444
+    },
+    "tradeoff": {
+      "n": 6,
+      "correct": 2,
+      "accuracy": 0.3333333333333333
+    },
+    "adversarial": {
+      "n": 6,
+      "correct": 2,
+      "accuracy": 0.3333333333333333
+    },
+    "trap": {
+      "n": 8,
+      "correct": 5,
+      "accuracy": 0.625
+    },
+    "judge_hard": {
+      "n": 17,
+      "correct": 9,
+      "accuracy": 0.5294117647058824
+    },
+    "routing_hard": {
+      "n": 5,
+      "correct": 5,
+      "accuracy": 1.0
+    }
+  },
+  "qwen3-14b_packed_T": {
+    "long_policy": {
+      "n": 19,
+      "correct": 5,
+      "accuracy": 0.2631578947368421
+    },
+    "probability": {
+      "n": 10,
+      "correct": 5,
+      "accuracy": 0.5
+    },
+    "temporal_numeric": {
+      "n": 15,
+      "correct": 5,
+      "accuracy": 0.3333333333333333
+    },
+    "ambiguous": {
+      "n": 7,
+      "correct": 4,
+      "accuracy": 0.5714285714285714
+    },
+    "multi_hop": {
+      "n": 18,
+      "correct": 10,
+      "accuracy": 0.5555555555555556
+    },
+    "tradeoff": {
+      "n": 6,
+      "correct": 1,
+      "accuracy": 0.16666666666666666
+    },
+    "adversarial": {
+      "n": 6,
+      "correct": 5,
+      "accuracy": 0.8333333333333334
+    },
+    "trap": {
+      "n": 8,
+      "correct": 7,
+      "accuracy": 0.875
+    },
+    "judge_hard": {
+      "n": 17,
+      "correct": 14,
+      "accuracy": 0.8235294117647058
+    },
+    "routing_hard": {
+      "n": 5,
+      "correct": 5,
+      "accuracy": 1.0
+    }
+  },
+  "qwen3-32b_packed_T": {
+    "long_policy": {
+      "n": 19,
+      "correct": 9,
+      "accuracy": 0.47368421052631576
+    },
+    "probability": {
+      "n": 10,
+      "correct": 4,
+      "accuracy": 0.4
+    },
+    "temporal_numeric": {
+      "n": 15,
+      "correct": 5,
+      "accuracy": 0.3333333333333333
+    },
+    "ambiguous": {
+      "n": 7,
+      "correct": 5,
+      "accuracy": 0.7142857142857143
+    },
+    "multi_hop": {
+      "n": 18,
+      "correct": 10,
+      "accuracy": 0.5555555555555556
+    },
+    "tradeoff": {
+      "n": 6,
+      "correct": 3,
+      "accuracy": 0.5
+    },
+    "adversarial": {
+      "n": 6,
+      "correct": 6,
+      "accuracy": 1.0
+    },
+    "trap": {
+      "n": 8,
+      "correct": 8,
+      "accuracy": 1.0
+    },
+    "judge_hard": {
+      "n": 17,
+      "correct": 14,
+      "accuracy": 0.8235294117647058
+    },
+    "routing_hard": {
+      "n": 5,
+      "correct": 5,
+      "accuracy": 1.0
+    }
+  },
+  "qwen3-32b_permavg_T": {
+    "long_policy": {
+      "n": 19,
+      "correct": 11,
+      "accuracy": 0.5789473684210527
+    },
+    "probability": {
+      "n": 10,
+      "correct": 5,
+      "accuracy": 0.5
+    },
+    "temporal_numeric": {
+      "n": 15,
+      "correct": 5,
+      "accuracy": 0.3333333333333333
+    },
+    "ambiguous": {
+      "n": 7,
+      "correct": 4,
+      "accuracy": 0.5714285714285714
+    },
+    "multi_hop": {
+      "n": 18,
+      "correct": 10,
+      "accuracy": 0.5555555555555556
+    },
+    "tradeoff": {
+      "n": 6,
+      "correct": 3,
+      "accuracy": 0.5
+    },
+    "adversarial": {
+      "n": 6,
+      "correct": 6,
+      "accuracy": 1.0
+    },
+    "trap": {
+      "n": 8,
+      "correct": 8,
+      "accuracy": 1.0
+    },
+    "judge_hard": {
+      "n": 17,
+      "correct": 14,
+      "accuracy": 0.8235294117647058
+    },
+    "routing_hard": {
+      "n": 5,
+      "correct": 5,
+      "accuracy": 1.0
+    }
+  }
+}

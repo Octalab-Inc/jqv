@@ -284,3 +284,21 @@ def test_generate_and_load_round_trip(tmp_path):
         assert it["choices"][it["answer"]].split(":")[0] == it["labels"][it["answer"]]
         assert "dependency_hops" in it["meta"] and it["qtype"] in ("choice", "noul")
     assert (tmp_path / "probability" / "summary.json").exists()
+
+
+# ----------------------------------------------------------------------------- paraphrase helpers (no model)
+
+
+def test_paraphrase_candidates_and_acceptance():
+    from jqv.synth import paraphrase as pp
+
+    rng, names = _rng(31)
+    it = policy.home_water(rng, names)
+    cands = pp.candidate_paragraphs(it.state)
+    lines = it.state.split("\n")
+    assert cands and all(not lines[i].strip().isupper() and not lines[i].startswith("=") for i in cands)
+    orig = "The insured returned after 75 consecutive days away on 10 September 2025 and found damage; the estimate is $22,400 (claim CLM-1796389)."
+    assert pp.accept(orig, "After 75 consecutive days away, the insured came back on 10 September 2025 to find damage estimated at $22,400 (claim CLM-1796389).")
+    assert not pp.accept(orig, "After 57 consecutive days away, the insured came back on 10 September 2025 to find damage estimated at $22,400 (claim CLM-1796389).")
+    assert not pp.accept(orig, "Here is the rewritten paragraph: " + orig)
+    assert not pp.accept(orig, "Short.")
