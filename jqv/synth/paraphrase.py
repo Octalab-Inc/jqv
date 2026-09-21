@@ -22,23 +22,40 @@ ID_PAT = re.compile(r"\b[A-Z]{2,5}-\d{2,}(?:-\d+)?\b")
 CAP = re.compile(r"\b[A-Z][a-z]{2,}\b")
 MONTH = re.compile(r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b")
 
-PROMPT = ("Rewrite the following paragraph from a business document in different words. Keep every number, date, time, amount, "
-          "identifier, name and the exact meaning unchanged; do not add or drop any fact; do not add commentary. Output only the "
-          "rewritten paragraph.\n\nParagraph:\n{p}")
+PROMPT = ("Rewrite the following paragraph from a business record in different words and with a different sentence structure. "
+          "Keep every number, date, time, amount, identifier and name exactly as written, keep every comparison (more than, at least, "
+          "before, after, within) and every negation exactly as they are, keep the same facts and the same meaning, and add nothing. "
+          "Output only the rewritten paragraph.\n\nParagraph:\n{p}")
+
+
+FACT_PREFIXES = ("Claim ", "Item ", "Order ", "Lot ", "Employee", "Account ", "Case ", "Contract ", "Adjuster's narrative", "Engineer's report",
+                 "Claim narrative", "Household:", "Distances ", "Supplier certificate", "A unit drawn", "The container holds", "Repair ",
+                 "Non-refundable", "Current term", "Policy EB", "Policy TR", "Policy HP")
+COMPARATORS = ("more than", "at least", "less than", "fewer than", "no later than", "not more than", "not later than", "on or after", "on or before",
+               "before", "after", "within", "outside", "exceed", "at or above", "at or below", "above", "below", "until", "since",
+               "not", "no ", "never", "without", "unless", "except", "only")
 
 
 def candidate_paragraphs(state: str) -> list[int]:
+    """Only item-specific fact paragraphs (claim files, reports, records). Rules, definitions, clauses, endorsements,
+    amendments, headings and the distractor notes are never rewritten: a paraphrase could shift a threshold or a
+    conclusion there without dropping any number, which the fact check would not catch."""
     out = []
     for i, p in enumerate(state.split("\n")):
         t = p.strip()
-        if len(t) < 180 or len(t) > 1400:
+        if len(t) < 120 or len(t) > 1400 or t.isupper() or t.startswith(("=", "-", "|", "[")):
             continue
-        if t.isupper() or t.startswith(("=", "-", "|", "[")) or re.match(r"^\d+(\.\d+)?\.\s", t):
+        if "note (" in t[:40].lower() or "note," in t[:40].lower():
             continue
-        if t.startswith(("From ", "Claim ", "Policy ", "Case ", "Contract ", "Order ", "Lot ", "Item ", "Employee:", "Account ")):
+        if not t.startswith(FACT_PREFIXES):
             continue
         out.append(i)
     return out
+
+
+def guard_counts(text: str) -> dict[str, int]:
+    low = " " + text.lower() + " "
+    return {c: low.count(" " + c if not c.endswith(" ") else " " + c) for c in COMPARATORS}
 
 
 STOP = {"The", "This", "That", "These", "Those", "After", "Before", "When", "Where", "While", "From", "With", "Without", "During",
@@ -74,7 +91,9 @@ def accept(orig: str, new: str) -> bool:
     if r < 0.6 or r > 1.6:
         return False
     missing = facts_of(orig) - facts_of(new)
-    return not missing
+    if missing:
+        return False
+    return guard_counts(orig) == guard_counts(new)  # comparators and negations must survive one-for-one
 
 
 def load_model(model_id: str):
@@ -95,7 +114,7 @@ def rewrite_batch(tok, model, device, paragraphs: list[str], max_new: int) -> li
     texts = [tok.apply_chat_template(m, tokenize=False, add_generation_prompt=True, enable_thinking=False) for m in msgs]
     enc = tok(texts, return_tensors="pt", padding=True).to(device)
     with torch.no_grad():
-        out = model.generate(**enc, max_new_tokens=max_new, do_sample=True, temperature=0.7, top_p=0.9, pad_token_id=tok.pad_token_id)
+        out = model.generate(**enc, max_new_tokens=max_new, do_sample=True, temperature=0.9, top_p=0.95, pad_token_id=tok.pad_token_id)
     gen = out[:, enc["input_ids"].shape[1]:]
     return [tok.decode(g, skip_special_tokens=True).strip() for g in gen]
 

@@ -740,6 +740,53 @@ curl -s https://<random>.trycloudflare.com/health                       # check 
   `results/public/server.log`, a branch switch replaced the file and the log of the measurement was lost;
   `results/public/*.log` is now ignored.
 
+## Synthetic data for the weak hard families (`jqv/synth/`, `data/synth/`)
+
+The JevBench families where the 32B is weakest are long_policy (9/19), temporal_numeric (5/15) and probability (4/10).
+Targeted training needs items whose answers are certain, so every synthetic item's answer comes from a solver (a rule
+engine, calendar arithmetic with `datetime` / `zoneinfo`, exact probabilities with `fractions`); a language model is used
+only to vary the wording of narrative paragraphs. The items have the JevBench shape (state, typed question `choice` /
+`noul` / `score` with criteria, labels, expected) and live in `data/synth/<family>/{train,dev,test}.jsonl` (2,000 / 300 /
+500 per family; dev and test are committed, train is regenerated with seed 0 and the saved paraphrase patch).
+
+- **long_policy**: five rule-engine domains (homeowners water damage, commercial equipment breakdown, trip cancellation,
+  an HR relocation-reimbursement policy, SLA service credits). Each document (1.3-3.0k tokens, median 2.25k) has definitions,
+  numbered exclusions with exceptions, dated endorsements or amendments that change a sublimit or threshold, generic
+  clauses, a correspondence excerpt and a claim file, plus a trainee note that argues for the surface answer; the decision
+  labels are computed by executing the same rules.
+- **temporal_numeric**: six scenarios (month-end and leap-year rules with time zones, business-day deadlines with holidays
+  and an after-hours rule, continuous-service months with leave resets, pro-rated invoices, DST cut-offs, unit conversions
+  against a cap). A note in the state presents a wrong computation.
+- **probability**: six scenarios (hypergeometric acceptance sampling with superseded plan versions, screening posteriors with
+  age-group prevalence, k-of-n redundancy, expected-value choice, supplier mix with Bayes, draw outcomes). `noul` items about
+  a random event carry the true P(yes) as `target_distribution`, and draw-outcome `choice` items carry the full outcome
+  distribution, for the later proper-scoring experiment.
+- **multi_hop as an attribute, not a family**: the solver's derivation trace gives every item `dependency_hops` (the number of
+  derived intermediate facts) and `reasoning_depth` (the longest derivation chain); hops range from 2 to 7.
+- **Distractors**: generation prefers items in which the note's shortcut gives a different answer from the truth (60% of the
+  temporal_numeric and 54% of the probability dev items), the failure mode the JevBench hard items are built around.
+- **Contamination**: 0 shared word 8-grams with the 231 JevBench public items and no reused IDs or invented names
+  (`scripts/synth_contamination.py`); getting there required rewording several standard-form phrases and the label vocabulary
+  that the first drafts had copied from the JevBench examples.
+
+Difficulty check (`scripts/synth_difficulty.py`, `results/synth_difficulty.md`; zero-shot, packed, dev 300 per family):
+
+| family | 14B dev | 32B dev | JevBench 32B (target ±10 pt) |
+|---|---:|---:|---:|
+| long_policy | 0.333 | 0.383 | 0.47 (9/19) |
+| temporal_numeric | 0.270 | 0.323 | 0.33 (5/15) |
+| probability | 0.447 | 0.453 | 0.40 (4/10) |
+
+The first generation was too easy for temporal_numeric (14B 0.507) and probability (14B 0.657); two hardening rounds
+(distractors that disagree with the truth, fewer two-option questions, per-scenario redraws, wider parameter spaces) brought
+all three families inside the target band at 32B. The models follow the wrong note in most items where it disagrees with
+the truth (surface-answer rate 0.6-1.0 in temporal_numeric). Accuracy is not monotone in hops: in long_policy the 6-hop
+items (the "pay within the sublimit" decisions) are the easiest, so hops measure the length of the derivation rather than
+difficulty by itself. Surface variation: Qwen3-14B rewrote one fact paragraph per train item (claim files, reports, records only; rules, clauses and the distractor notes are never rewritten), and a rewrite was kept only if every number, date, identifier and name survived, the length stayed within 0.6-1.6x, and every comparison and negation word kept its count. Within the 2-hour box this changed 612 long_policy (31%), 568 temporal_numeric (28%) and 125 probability (6%) train items; the model returned the paragraph unchanged in about half of the accepted cases, and those were dropped. The accepted rewrites are stored as `train.paraphrase.jsonl` patches and re-applied when train is regenerated; dev and test are untouched.
+
+Tests: `tests/test_synth.py` (25 tests) checks the solvers on hand-computed cases through a `facts` override of every
+scenario, the trace bookkeeping, item invariants, split deduplication and the loader round trip.
+
 ## Related projects
 
 Several public implementations arrived independently at the same hypotheses in 2026 (read the option-token logits directly

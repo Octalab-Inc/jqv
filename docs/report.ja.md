@@ -630,6 +630,45 @@ curl -s https://<random>.trycloudflare.com/health                       # calibr
 - 2026-09-21: serving code を [Octalab-Inc/jqv](https://github.com/Octalab-Inc/jqv) として公開し、held-out を含む順位付きの再測定を [jevbench#9](https://github.com/fstandhartinger/jevbench/issues/9) で依頼した（maintainer 側が自分のハードで実行する。手順は `docs/jevbench-serving.md`）。
 - 公開中の監視は `scripts/watch_public.sh`（issue のコメント、トンネル経由と localhost の health、cloudflared `/metrics` のリクエスト増分を 5 分ごとに `results/public/watch_public.log` に記録し、消えたプロセスは再起動する。GitHub には書き込まない）。uvicorn のアクセスログを git 管理下の `results/public/server.log` に向けていたため、ブランチ切替でファイルが差し替わり測定中のログを失った。`results/public/*.log` は ignore にした。
 
+## 弱い hard family 向けの合成データ（`jqv/synth/`, `data/synth/`）
+
+32B が JevBench で最も弱い family は long_policy（9/19）、temporal_numeric（5/15）、probability（4/10）。targeted training には
+正解が確実なデータが要るので、合成データの正解はすべて solver（rule engine、`datetime` / `zoneinfo` による暦計算、`fractions` による
+厳密な確率）で生成し、LLM はナラティブ段落の言い換えにだけ使う。item は JevBench と同じ形（state、`choice` / `noul` / `score` の
+typed question と criteria、labels、expected）で、`data/synth/<family>/{train,dev,test}.jsonl`（family ごとに 2,000 / 300 / 500。
+dev と test はコミット、train は seed 0 と保存した paraphrase patch から再生成）に置く。
+
+- **long_policy**: rule engine を持つ 5 ドメイン（住宅の水損、商用設備の故障、旅行キャンセル、人事の転居費用規程、SLA クレジット）。
+  各文書（1.3〜3.0k token、中央値 2.25k）は定義、例外付きの番号付き除外条項、サブリミットや閾値を変える発効日付きの特約・改定、
+  一般条項、往復文書の抜粋、請求ファイルを持ち、表面的な答えに誘導する研修生メモを含む。決定ラベルは同じ規則を実行して決める。
+- **temporal_numeric**: 6 シナリオ（月末規則・うるう年と時差、祝日と時間外受付を含む営業日期限、休職リセット付きの継続勤務月数、
+  日割り請求、DST の締切、上限に対する単位換算）。state 内のメモが誤った計算を示す。
+- **probability**: 6 シナリオ（旧版の計画が残る抜取検査の超幾何確率、年齢層別有病率からの事後確率、k-of-n 冗長系、期待値による選択、
+  供給元の混合とベイズ、抽出の結果）。確率的事象を問う `noul` は真の P(yes) を `target_distribution` に、抽出結果の `choice` は
+  結果分布そのものを持ち、後続の proper scoring 実験に使う。
+- **multi_hop は family ではなく属性**: solver の導出トレースから全問に `dependency_hops`（導出した中間事実の数）と
+  `reasoning_depth`（最長の導出連鎖）を付ける。hops は 2〜7。
+- **誤誘導**: メモの近道が正解と違う答えになる問題を優先して生成する（dev で temporal_numeric 60%、probability 54%）。
+  JevBench hard が問うている失敗様式そのもの。
+- **汚染**: JevBench public 231 問との単語 8-gram 一致 0、ID・固有名の再利用なし（`scripts/synth_contamination.py`）。
+  最初の草稿が JevBench の例から引きずっていた定型句とラベル語彙を書き換えて到達した。
+
+難易度確認（`scripts/synth_difficulty.py`, `results/synth_difficulty.md`。zero-shot、packed、family ごとに dev 300 問）:
+
+| family | 14B dev | 32B dev | JevBench 32B（目標 ±10 pt） |
+|---|---:|---:|---:|
+| long_policy | 0.333 | 0.383 | 0.47（9/19） |
+| temporal_numeric | 0.270 | 0.323 | 0.33（5/15） |
+| probability | 0.447 | 0.453 | 0.40（4/10） |
+
+初回生成は temporal_numeric（14B 0.507）と probability（14B 0.657）が易しすぎた。難化を 2 回（正解と食い違う誤誘導、2 択の削減、
+scenario 内での引き直し、parameter 空間の拡大）行い、32B で 3 family とも目標範囲に入った。誤誘導メモが正解と食い違う問題では
+モデルはほぼメモに従う（temporal_numeric の surface-answer rate 0.6〜1.0）。精度は hops に対して単調ではなく、long_policy では
+6 hop の問題（「サブリミット内で支払う」決定）が最も易しい。hops は導出の長さであって難しさそのものではない。表現の多様化: Qwen3-14B が train の各 item で事実の記述段落を 1 つ言い換えた（請求ファイル・報告・記録のみ。規則、条項、誤誘導メモは書き換えない）。数値・日付・ID・固有名がすべて残り、長さが 0.6〜1.6 倍で、比較語と否定語の出現数が変わらない場合だけ受理する。2 時間の枠内で long_policy 612 件（31%）、temporal_numeric 568 件（28%）、probability 125 件（6%）の train item が変わった。受理分の約半数はモデルが原文をそのまま返したもので、それらは除いた。受理した書き換えは `train.paraphrase.jsonl` の patch として保存し、train の再生成時に再適用する。dev と test は変更しない。
+
+テスト: `tests/test_synth.py`（25 件）が、各 scenario の `facts` 上書きによる手計算ケース、トレースの集計、item の不変条件、
+split の重複排除、loader の往復を検査する。
+
 ## 関連プロジェクト
 
 同じ仮説（生成せず選択肢 token の logits を直接読む、shared state を 1 回 prefill する、学習 head、Brier 学習、shared-prefix attention）に

@@ -1,6 +1,6 @@
 ---
 title: JevBench hard の弱い family（long_policy / temporal_numeric / probability）を狙った合成データを、正解をプログラム生成して作る
-status: pending
+status: done
 priority: P1
 created_at: 2026-09-21T10:11:14+09:00
 depends_on: []
@@ -73,3 +73,43 @@ uv run python scripts/jevbench_families.py    # 既存の 32B 結果で long_pol
 # Open Questions
 
 - なし（2026-09-21 決定: paraphrase はテンプレート + ローカル 14B を最大 2 時間、外部 API の teacher は使わない。multi_hop は横断属性として扱う）。
+
+# Result
+
+## Changed
+
+- `jqv/synth/`: `common.py` (Trace with dependency_hops / reasoning_depth, SynthItem in the JevBench wire shape, split registry with
+  signature dedup, invented-name banks), `temporal.py` (6 scenarios), `probability.py` (6 scenarios, target distributions),
+  `policy.py` (5 rule-engine domains, 1.3-3.0k-token documents), `generate.py` (CLI, per-split RNG, paraphrase patch re-apply),
+  `paraphrase.py` (local Qwen rewrite of fact paragraphs with fact + comparator/negation guards, time box, patch file).
+- `jqv/data.py`: `load_named("synth:<family>:<split>")`; `scripts/eval.py`: dataset name sanitised in result tags.
+- `scripts/synth_difficulty.py` (accuracy by family / scenario / hops / type + surface-answer rate), `scripts/synth_contamination.py`
+  (8-gram, ID and name overlap with JevBench public), `scripts/jevbench_families.py` (per-family JevBench table).
+- `data/synth/<family>/{dev,test}.jsonl` + `summary.json` + `train.paraphrase.jsonl` committed; `train.jsonl` regenerated from seed 0
+  plus the patch (`.gitignore`).
+- `tests/test_synth.py` (25 tests). `results/synth_difficulty.md`, `results/synth_difficulty_{14b,32b}.json`, `results/jevbench_families.json`.
+- Reports: synthetic-data section in `docs/report.md` and `docs/report.ja.md`.
+
+## Verified
+
+- `uv run pytest tests/test_synth.py`: 25 passed (hand-computed solver cases via the `facts` override, helpers on known values,
+  invariants, dedup, loader round trip, paraphrase guards).
+- `scripts/synth_contamination.py`: 0 shared 8-grams, 0 reused IDs / names on all 9 splits (after three rounds of rewording).
+- Difficulty (dev 300 per family, zero-shot packed): 32B long_policy 0.383 / temporal_numeric 0.323 / probability 0.453 against
+  JevBench 32B 0.47 / 0.33 / 0.40 (all within ±10 pt); 14B 0.333 / 0.270 / 0.447 (below 32B in every family).
+  `scripts/jevbench_families.py` reproduces the README family counts (32B long_policy 9/19 etc.).
+- hops recorded for every item (2-7); accuracy by hops is in the report (not monotone in long_policy).
+- Paraphrase: 612 / 568 / 125 train items changed within the 2-hour box; dev/test untouched; contamination re-checked after.
+
+## Deviations
+
+- Two hardening rounds were needed (temporal_numeric and probability were too easy at first: 14B 0.507 / 0.657).
+- Paraphrase candidates were restricted to fact paragraphs after a first pass showed rule/endorsement paragraphs being chosen
+  and barely changed; the first pass (33 min) was discarded and rerun (30 + 11 + 5 min), total under 2 h.
+- Difficulty comparison uses JevBench families with 10-19 items each, so the ±10 pt target is loose by construction.
+
+## Remaining
+
+- The synthetic dev/test sets are template-generated (no paraphrase), so a model trained on train can exploit template
+  regularities on test; JevBench public hard remains the external check (next task `hard-family-targeted-lora`).
+- probability `draw_outcomes` items are easy (0.80-0.85) and few; the family's difficulty rests on screening / redundancy / acceptance.
