@@ -705,6 +705,23 @@ scenario 内での引き直し、parameter 空間の拡大）行い、32B で 3 
 テスト: `tests/test_synth.py`（25 件）が、各 scenario の `facts` 上書きによる手計算ケース、トレースの集計、item の不変条件、
 split の重複排除、loader の往復を検査する。
 
+## 文字数え問題（"how many 'r' are in strawberry?"）を decision readout で解けるか
+
+LLM が苦手な文字単位の数え上げを、生成せずに分布を読む jqv でどう扱えるかの小さな probe（`scripts/letter_count_probe.py`、
+10 語、選択肢は 0〜5 の score 型、1.7B、生の確率）。
+
+| 設定 | 1.7B 正解数 | 備考 |
+|---|---:|---|
+| 直接: 質問のみ（state 空） | 1/10 | strawberry → 「1」に p=0.98。間違いに高い確信 |
+| 直接: state に 1 文字ずつ綴った語を置く | 6/10 | strawberry は「2」（p=1.00）のまま |
+| 直接: 綴り + 位置番号を置く | 4/10 | 位置情報はむしろ邪魔 |
+| 分解: 綴った state を共有し、各位置に「この位置は 'r' か」の yes/no を分岐させ、外で数える | 1/10 | 1.7B は位置の参照ができず、先頭一致以降に yes が続く |
+
+読み取れること: 1-token readout は「答えを生成しない」だけで、背後の能力は backbone のものなので、1 パスの forward で
+文字を数える能力がなければ結果は変わらない。むしろ間違った答えに 0.98 の確率が付くのは、校正節で見た「生の readout は過信する」
+性質の分かりやすい例。綴りを state に置くと 6/10 まで上がるが、位置ごとの yes/no への分解は 1.7B では成立しなかった
+（14B / 32B の結果は GPU が空き次第、同じスクリプトで追記する）。
+
 ## 関連プロジェクト
 
 同じ仮説（生成せず選択肢 token の logits を直接読む、shared state を 1 回 prefill する、学習 head、Brier 学習、shared-prefix attention）に
