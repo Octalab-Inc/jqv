@@ -27,10 +27,10 @@ POST /decision
 4. **Much of the calibration "magic" can be reproduced with a scalar correction, but domain shift is unsolved.** The 32B reaches
    ECE 0.023 on MMLU (Jev's reported value: 0.031), and the same temperature transfers to JMMLU, transfers partially to JevBench
    hard (0.274 → 0.107) and is harmful on bridge: the best scale depends on the task.
-5. **External measurement reproduced the public numbers, and the gap to Jev did not shrink.** Benchmark Heaven (JevBench v1.2.7)
-   measured the 32B zero-shot configuration at easy 1.000 / standard 0.958 / judge 0.925 / public hard 0.622, Calibration 74.9,
-   Score 67.2 (a partial row, not ranked). The 109 held-out hard items were not sent under the policy of not sending held-out
-   items to a submitter-operated endpoint. The serving code is now public and a rankable re-run has been requested.
+5. **External measurement reproduced the public numbers, and the gap to Jev did not shrink.** Benchmark Heaven measured the 32B
+   zero-shot configuration first through a tunnel to our machine (JevBench v1.2.7, partial row: easy 1.000 / standard 0.958 /
+   judge 0.925 / public hard 0.622, Score 67.2) and then, from the published serving code on their own H100, over all 534
+   decisions (v1.2.8): **#8 of 36, JevBench Score 70.1**, hard 0.645 on all 220 items (Jev 0.741), Calibration 79.0.
 
 ## What was built
 
@@ -701,6 +701,45 @@ What this shows:
    Japan-Germany round trip, and corresponds to 1.85 s after the ×2 self-hosted adjustment. Cost is estimated at the base
    model's public tariff even for a free endpoint. Competing on the Speed axis would require a CUDA server near Europe.
 
+### Ranked re-run by Benchmark Heaven (JevBench v1.2.8, 2026-09-21)
+
+After the serving code was published ([Octalab-Inc/jqv](https://github.com/Octalab-Inc/jqv), commit 0189b67, Apache-2.0),
+a second bench request ([jevbench#9](https://github.com/fstandhartinger/jevbench/issues/9)) asked for a run on the
+maintainers' own hardware. They ran the same configuration (`/health`: prompt_hash 4f85a0b34776, temperature
+3.0225814579771493, Qwen3-32B BF16, packed engine) on a RunPod H100 NVL 96 GB (torch 2.11 + CUDA 12.8) in Canada, called
+from their server in Germany one request at a time, over all 534 decisions including the 109 held-out hard items. The
+partial row was replaced by a complete, ranked one ([v1.2.8](https://github.com/fstandhartinger/jevbench/tree/v1.2.8);
+copies of the published row in `results/jevbench/published_v1.2.8/`, the comments in `results/public/jevbench_issue9_comments.md`).
+
+| item | v1.2.8 (maintainers' H100, all 534 decisions) | v1.2.7 (tunnel to our Mac, 425 of 534) |
+|---|---:|---:|
+| rank / JevBench Score | **#8 of 36 / 70.1** | not ranked / 67.2 |
+| Intelligence / Calibration / Speed / Cost | 86.1 / 79.0 / 74.6 / 47.5 | 76.1 / 74.9 / 67.6 / 52.8 |
+| easy / standard / judge | 1.000 / 0.958 / 0.925 | 1.000 / 0.958 / 0.925 |
+| hard (220 items) | 0.645 (142/220) | 0.314 (69 correct, 109 unanswered) |
+| hard public 111 / held-out 109 | 0.622 (69/111) / 0.670 (73/109) | 0.622 / not sent |
+| hard ECE / Brier / probability fidelity | 0.088 / 0.472 / 75.5 | 0.107 / 0.515 / 71.1 |
+| p50 / p95 (standard + judge, from Germany, raw) | 0.75 s / 0.97 s (adjusted 1.64 s) | 0.92 s / 4.71 s (1.85 s) |
+| cost per 1,000 decisions | $0.0564 est. | $0.0374 est. |
+
+Hard tier by family on all 220 items (correct / items): adversarial 12/12, trap 16/16, routing 9/10, judge 26/33,
+tradeoff 8/12, multi_hop 24/35, ambiguous 9/14, probability 12/20, long_policy 19/38, temporal_numeric 7/30.
+
+What this shows:
+
+1. **The public tiers reproduced a third time** (easy / standard / judge unchanged), and the held-out hard items came out
+   slightly above the public ones (67.0% vs 62.2%), so using the public tiers once as a development gate did not inflate
+   the number.
+2. **The hard-tier gap to Jev 1.13 is 9.6 points** (74.1 vs 64.5), the same width as on MMLU (10.9). The weak families are the
+   same on the held-out half: temporal_numeric 7/30 (2/15 on the held-out items), long_policy 19/38 and probability 12/20,
+   against adversarial / trap / routing at or near 100%. These are the families the synthetic training data targets.
+3. **Calibration 79.0** (Jev 82.7): the hard-tier ECE is 0.088 and the probability fidelity 75.5, both better than in the
+   tunnel run (0.107 / 71.1) because the held-out items are now included, not because the model changed.
+4. **Speed 74.6** from a raw p50 of 0.75 s across the Atlantic on an H100 (×2 + 0.15 s adjustment = 1.64 s); our local MPS
+   p50 was 0.65 s. The cost estimate rose to $0.0564 because the held-out hard items are long (359 input tokens per
+   decision on average over the whole set).
+5. The run also confirms the CUDA path of the `packed` engine (torch 2.11 + CUDA 12.8), which we had not exercised ourselves.
+
 ## Public endpoint (Cloudflare Quick Tunnel)
 
 The 303 held-out items and the judge tier are measured by Benchmark Heaven on a bench request. Because jqv's `/v1/systemone` is
@@ -732,8 +771,8 @@ curl -s https://<random>.trycloudflare.com/health                       # check 
   down". cloudflared's counters showed 541 requests in total while public (511 with status 200, 2 with 400 from our own probes,
   27 with 404 from path scanning).
 - 2026-09-21: the serving code was published as [Octalab-Inc/jqv](https://github.com/Octalab-Inc/jqv) and a rankable re-run
-  including the held-out items was requested in [jevbench#9](https://github.com/fstandhartinger/jevbench/issues/9) (the
-  maintainers run it on their own hardware; instructions in `docs/jevbench-serving.md`).
+  including the held-out items was requested in [jevbench#9](https://github.com/fstandhartinger/jevbench/issues/9); the
+  maintainers ran it the same day on their own H100 (instructions in `docs/jevbench-serving.md`), see "Ranked re-run" above.
 - Monitoring while public: `scripts/watch_public.sh` (every 5 minutes it logs issue comments, health through the tunnel and on
   localhost, and the request-count deltas from cloudflared's `/metrics` to `results/public/watch_public.log`, and restarts any
   process that has disappeared; it never writes to GitHub). Because the uvicorn access log pointed at the git-tracked
@@ -862,8 +901,8 @@ the Brier term, so an RLCD-type approach (outcome-based proper scoring) is the n
   prefix caching.
 - **Domain-shift calibration** — MMLU ↔ JMMLU transfers, JevBench hard transfers partially, bridge is harmed. Per-task-type
   temperatures, or calibration training that does not rely on a temperature.
-- **A ranked JevBench row** — the v1.2.7 row has the 109 held-out hard items unsent and no rank (the judge tier was measured).
-  The serving code is now public and a re-run has been requested (jevbench#9). Limited use of few-shot / perm_avg on the weak
-  families (long_policy, temporal_numeric).
+- **The hard-tier gap to Jev** — ranked in v1.2.8 (#8 of 36, hard 64.5% vs Jev 74.1%); the gap sits in temporal_numeric,
+  long_policy and probability, which the synthetic targeted training addresses next. Limited use of few-shot / perm_avg on the
+  weak families is the training-free alternative.
 - **Real applications** — bulk classification of the classifier.dev kind and grep-style routing on top of `/v1/systemone`,
   using selective accuracy (44% at accuracy 0.97 with p ≥ 0.9) as the operating metric.
