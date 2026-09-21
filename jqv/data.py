@@ -54,6 +54,31 @@ def load_jmmlu() -> list[Item]:
     return items
 
 
+def load_synth(family: str, split: str, root: str | Path | None = None) -> list[Item]:
+    """Synthetic JevBench-shaped items (data/synth/<family>/<split>.jsonl) as jqv items.
+
+    The wire-format question (choice / noul / score) is turned into choices exactly as the TypeSafe-compatible
+    server does it, so the model sees the same text in eval and in serving. Extra keys: id, family, labels,
+    qtype, target_distribution, meta (dependency_hops, reasoning_depth, ...).
+    """
+    from jqv.systemone import build_question
+
+    root = Path(root) if root else Path(__file__).resolve().parent.parent / "data" / "synth"
+    path = root / family / f"{split}.jsonl"
+    if not path.exists():
+        raise FileNotFoundError(f"{path} (run: uv run python -m jqv.synth.generate --family {family})")
+    items = []
+    for rec in load_jsonl(path):
+        q, meta = build_question(rec["id"], rec["question"])
+        items.append({
+            "state": rec["state"], "question": q.question, "choices": q.choices,
+            "answer": meta["labels"].index(rec["expected"]), "id": rec["id"], "family": rec["family"],
+            "labels": meta["labels"], "qtype": meta["type"], "target_distribution": rec.get("target_distribution"),
+            "meta": rec.get("meta", {}), "subject": rec.get("meta", {}).get("scenario"),
+        })
+    return items
+
+
 def load_named(name: str) -> list[Item]:
     if name == "mmlu":
         return load_mmlu()
@@ -61,6 +86,11 @@ def load_named(name: str) -> list[Item]:
         return load_jmmlu()
     if name == "bridge":
         return load_jsonl(Path(__file__).resolve().parent.parent / "data" / "bridge_synth.jsonl")
+    if name.startswith("synth:"):
+        parts = name.split(":")
+        if len(parts) != 3:
+            raise ValueError("synthetic datasets are named synth:<family>:<split>")
+        return load_synth(parts[1], parts[2])
     if name.endswith(".jsonl"):
         return load_jsonl(name)
     raise ValueError(f"unknown dataset {name!r}")

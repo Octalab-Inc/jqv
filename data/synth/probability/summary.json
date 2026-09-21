@@ -1,0 +1,134 @@
+{
+  "train": {
+    "n": 2000,
+    "hops_hist": {
+      "2": 22,
+      "3": 517,
+      "4": 1038,
+      "5": 423
+    },
+    "qtype": {
+      "choice": 1001,
+      "noul": 999,
+      "score": 0
+    },
+    "scenarios": {
+      "acceptance_sampling": 502,
+      "draw_outcomes": 240,
+      "ev_choice": 433,
+      "redundancy": 22,
+      "screening_posterior": 472,
+      "supplier_mix": 331
+    },
+    "state_tokens": {
+      "min": 198,
+      "median": 367,
+      "max": 555
+    },
+    "expected_hist": {
+      "25_to_50_percent": 89,
+      "50_to_75_percent": 68,
+      "both_first_kind": 14,
+      "both_second_kind": 16,
+      "no": 630,
+      "one_of_each": 116,
+      "option_a": 69,
+      "option_b": 162,
+      "option_c": 28,
+      "over_75_percent": 19,
+      "supplier_a": 92,
+      "supplier_b": 32,
+      "supplier_c": 19,
+      "under_25_percent": 277,
+      "yes": 369
+    }
+  },
+  "dev": {
+    "n": 300,
+    "hops_hist": {
+      "2": 2,
+      "3": 77,
+      "4": 159,
+      "5": 62
+    },
+    "qtype": {
+      "choice": 148,
+      "noul": 152,
+      "score": 0
+    },
+    "scenarios": {
+      "acceptance_sampling": 66,
+      "draw_outcomes": 26,
+      "ev_choice": 80,
+      "redundancy": 2,
+      "screening_posterior": 70,
+      "supplier_mix": 56
+    },
+    "state_tokens": {
+      "min": 200,
+      "median": 353,
+      "max": 547
+    },
+    "expected_hist": {
+      "25_to_50_percent": 10,
+      "50_to_75_percent": 10,
+      "both_first_kind": 1,
+      "both_second_kind": 2,
+      "no": 102,
+      "one_of_each": 9,
+      "option_a": 28,
+      "option_b": 17,
+      "option_c": 7,
+      "over_75_percent": 5,
+      "supplier_a": 16,
+      "supplier_b": 7,
+      "supplier_c": 2,
+      "under_25_percent": 34,
+      "yes": 50
+    }
+  },
+  "test": {
+    "n": 500,
+    "hops_hist": {
+      "2": 3,
+      "3": 139,
+      "4": 265,
+      "5": 93
+    },
+    "qtype": {
+      "choice": 272,
+      "noul": 228,
+      "score": 0
+    },
+    "scenarios": {
+      "acceptance_sampling": 129,
+      "draw_outcomes": 29,
+      "ev_choice": 127,
+      "redundancy": 3,
+      "screening_posterior": 139,
+      "supplier_mix": 73
+    },
+    "state_tokens": {
+      "min": 193,
+      "median": 374,
+      "max": 555
+    },
+    "expected_hist": {
+      "25_to_50_percent": 28,
+      "50_to_75_percent": 22,
+      "both_first_kind": 2,
+      "both_second_kind": 1,
+      "no": 162,
+      "one_of_each": 16,
+      "option_a": 25,
+      "option_b": 50,
+      "option_c": 15,
+      "over_75_percent": 12,
+      "supplier_a": 23,
+      "supplier_b": 7,
+      "supplier_c": 3,
+      "under_25_percent": 68,
+      "yes": 66
+    }
+  }
+}

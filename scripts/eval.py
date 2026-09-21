@@ -93,7 +93,7 @@ def main():
         m["accuracy_note"] = "generate engine: probabilities are one-hot, calibration metrics not meaningful"
     print(m)
 
-    tag = (f"{a.dataset}_{a.engine}_{slug(rt.model_id)}" + (f"_{Path(a.head_dir).parent.name}" if a.head_dir else "")
+    tag = (f"{a.dataset.replace(':', '-')}_{a.engine}_{slug(rt.model_id)}" + (f"_{Path(a.head_dir).parent.name}" if a.head_dir else "")
            + (f"_shots{a.shots}{'fixed' if a.shots_mode == 'fixed' else ''}" if a.shots else "") + ("_permavg" if a.perm_avg else ""))
     np.savez(RESULTS / f"{tag}.npz", logits=z, labels=y, k=k, is_val=is_val)
     dump_json(m, RESULTS / f"{tag}.json")

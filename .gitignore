@@ -7,3 +7,4 @@ results/*.log
 results/train/
 results/public/watch_*
 results/public/*.log
+data/synth/*/train.jsonl
