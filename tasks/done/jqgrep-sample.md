@@ -1,6 +1,6 @@
 ---
 title: jqv を使った cascade 型 semantic code search のサンプル jqgrep を作る（字句選別 → sketch 判定 → 全文 shared-state で range 判定）
-status: pending
+status: done
 priority: P2
 created_at: 2026-09-21T17:18:04+09:00
 depends_on: []
@@ -71,3 +71,41 @@ JQV_MODEL=Qwen/Qwen3-1.7B uv run uvicorn jqv.server:app --port 8012 & uv run pyt
 # Open Questions
 
 - なし（設計はユーザー提示の 3 段 cascade に従う）。
+
+# Result
+
+## Changed
+
+- `jqgrep/` package: `walker.py` (git ls-files / os.walk, binary and size filters), `sketch.py` (query terms, symbols, imports,
+  lexical score with a code-over-docs/data prior, `--include-docs`), `candidate.py` (stage 1: groups of 12 sketches in one shared
+  state, per-file yes/no + listwise "which file", final pass over the best 2k), `passages.py` (line ranges, windows, merge, trim,
+  role questions), `search.py` (stage 2: one `decide` per file window with range yes/no + listwise range + file relevance / role /
+  production / ambiguity; relative-gap ranking), `output.py` (text / JSON), `jqv_client.py` (in-process runtime or `--server`),
+  `__main__.py` (CLI). `jqgrep/README.md` (design, options, results, limits); a paragraph in the top-level README.
+- `tests/test_jqgrep.py`: 5 model-free tests (walker, sketch, ranges, merge/trim, the whole cascade with a fake client).
+
+## Verified
+
+- `uv run pytest tests/test_jqgrep.py`: 5 passed.
+- Qwen3-14B, default settings: all three reference queries return the expected file as the sole top hit
+  (`jqv/engine/packed.py:31-69` 0.91, `scripts/fit_temperature.py:31-68` 0.90, `jqv/systemone.py:17-77` 0.77), 145-173 s per query
+  including model load (`results/jqgrep_14b.log`, kept outside git).
+- Qwen3-1.7B, default settings: query 1 expected file #3, query 2 #2, query 3 not in the top 3.
+- `--json` and `--server` (against a temporary 1.7B jqv server on port 8012) run end to end.
+- Stage 2 uses one `decide` per file window carrying range + role + ambiguity questions.
+
+## Deviations
+
+- The Success criterion asked for top-3 on all three queries with the 1.7B; the third query (TypeSafe wire format) fails
+  there because the 1.7B says yes to nearly every sketch and task notes quoting the code outrank the code. Recorded in the
+  README; the recommended backbone is 14B, where all three are #1.
+- Stage 1 was changed from independent per-sketch questions (the task text) to grouped shared states with a listwise question,
+  because the independent version let the 1.7B accept everything.
+- A slip while closing the task briefly committed the jqgrep README over the top-level README (854d234); fixed in the next commit.
+
+## Remaining
+
+- No labelled code-search benchmark (ripgrep / BM25 / embeddings / jqv engines / Jev) and no calibration for `--threshold`;
+  scores are comparable within a query only.
+- `--gap 0.25` leaves one file on single-implementation queries with the 14B; multi-file intents need `--gap 0.5`.
+- Stage 0 falls back to the smallest files when a query has no lexical overlap.
