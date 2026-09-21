@@ -179,6 +179,8 @@ class Trainer:
                 per_src.setdefault(self.val_sources[i + j] if self.val_sources else "val", []).append(int(h))
         self.model.train()
         self.head.train()
+        if self.device.type == "mps":
+            torch.mps.empty_cache()
         out = {"val_acc": correct / n, "val_nll": nll / n, "val_brier": brier / n, "n": n}
         if len(per_src) > 1:
             out["val_acc_by_source"] = {k: round(sum(v) / len(v), 4) for k, v in per_src.items()}
@@ -251,6 +253,8 @@ class Trainer:
             self.step += 1
             run_loss += step_loss
             run_n += 1
+            if self.step % 10 == 0 and self.device.type == "mps":
+                torch.mps.empty_cache()
             if self.step % self.cfg.log_every == 0 or self.step == self.cfg.steps:
                 elapsed = time.time() - t0
                 rate = (self.step - done0) / elapsed
