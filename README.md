@@ -632,6 +632,7 @@ curl -s https://<random>.trycloudflare.com/health                       # calibr
   同じ Mac から公開 URL を叩いた実測では、ローカル 0.23〜0.74 s のリクエストがトンネル経由で +0.04〜0.12 s（日本国内の Cloudflare edge 経由）。ドイツからはさらに往復分が乗る。Speed 軸まで競うなら欧州近傍の Linux/CUDA に置く。
 - 提出するのは 32B zero-shot + T=3.0（hard 0.622、Calibration 78.6、p50 0.65 s）。perm_avg は +1.8 pt に対し p50 が 2 倍でスコア上不利。
 - bench request は 2026-09-21 に提出し（[fstandhartinger/jevbench#6](https://github.com/fstandhartinger/jevbench/issues/6)、32B zero-shot + T=3.02、リポジトリは非公開のまま。提出文は `results/public/bench_request_issue.md`）、同日午前に測定され JevBench v1.2.7 に掲載された（上の節）。「測定完了、トンネルを落としてよい」のコメントを受けて 08:51 に停止。cloudflared のカウンタでは公開中の総リクエスト 541（200 が 511、400 が 2 は自分の probe、404 が 27 はパス探索）。
+- 2026-09-21: serving code を [Octalab-Inc/jqv](https://github.com/Octalab-Inc/jqv) として公開し、held-out を含む順位付きの再測定を [jevbench#9](https://github.com/fstandhartinger/jevbench/issues/9) で依頼した（maintainer 側が自分のハードで実行する。手順は `docs/jevbench-serving.md`）。
 - 公開中の監視は `scripts/watch_public.sh`（issue のコメント、トンネル経由と localhost の health、cloudflared `/metrics` のリクエスト増分を 5 分ごとに `results/public/watch_public.log` に記録し、消えたプロセスは再起動する。GitHub には書き込まない）。uvicorn のアクセスログを git 管理下の `results/public/server.log` に向けていたため、ブランチ切替でファイルが差し替わり測定中のログを失った。`results/public/*.log` は ignore にした。
 
 ## 関連プロジェクト
