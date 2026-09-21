@@ -302,3 +302,20 @@ def test_paraphrase_candidates_and_acceptance():
     assert not pp.accept(orig, "After 57 consecutive days away, the insured came back on 10 September 2025 to find damage estimated at $22,400 (claim CLM-1796389).")
     assert not pp.accept(orig, "Here is the rewritten paragraph: " + orig)
     assert not pp.accept(orig, "Short.")
+
+
+# ----------------------------------------------------------------------------- mixed training sources
+
+
+def test_mix_parsing_and_per_batch_source_sampling():
+    from jqv.train.data import MixSampler, load_source, parse_mix
+
+    assert parse_mix("synth:long_policy=0.25, mmlu=0.3") == [("synth:long_policy", 0.25), ("mmlu", 0.3)]
+    items = load_source("synth:probability:dev")
+    assert len(items) == 300 and set(items[0]) >= {"state", "question", "choices", "answer"}
+    rng = random.Random(0)
+    sampler = MixSampler({"a": [{"v": i} for i in range(10)], "b": [{"v": 100 + i} for i in range(5)]}, {"a": 0.5, "b": 0.5}, rng)
+    for _ in range(20):
+        batch = sampler.next(4, lambda it: it["v"])
+        assert len(batch) == 4 and (all(v < 100 for v in batch) or all(v >= 100 for v in batch))  # one source per batch
+    assert sampler.next(3, lambda it: None if it["v"] % 2 else it["v"]) and all(v % 2 == 0 for v in sampler.next(3, lambda it: None if it["v"] % 2 else it["v"]))

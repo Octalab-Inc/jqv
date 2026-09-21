@@ -15,7 +15,7 @@ from torch import nn
 
 from jqv.heads import load_head, make_head, save_head
 from jqv.model import Runtime
-from jqv.train.data import Example, collate, gather_features, load_split, make_example
+from jqv.train.data import Example, MixSampler, collate, gather_features, load_source, load_split, make_example, parse_mix
 
 
 @dataclass
@@ -43,6 +43,8 @@ class TrainConfig:
     shuffle_options: bool = True
     grad_accum: int = 1  # split each step's batch into this many micro-batches (same effective batch / schedule)
     grad_checkpointing: bool = False  # recompute activations in backward (needed for 32B in 128 GB)
+    train_mix: str | None = None  # e.g. 'synth:long_policy=0.25,synth:temporal_numeric=0.25,synth:probability=0.2,mmlu=0.3'
+    val_mix: str | None = None  # e.g. 'synth:long_policy:dev=96,synth:temporal_numeric:dev=96,synth:probability:dev=96,mmlu_val=64'
 
 
 def brier_loss(logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -95,22 +97,52 @@ class Trainer:
     # ----- data -----
     def prepare_data(self):
         rng = random.Random(self.cfg.seed)
-        train_items = load_split("auxiliary_train")
-        rng.shuffle(train_items)
-        val_items = load_split("validation")
-        random.Random(self.cfg.seed + 1).shuffle(val_items)
-        self.val = [e for e in (make_example(self.rt.prompt, it, None, self.cfg.max_len) for it in val_items[: self.cfg.n_val * 2])
-                    if e is not None][: self.cfg.n_val]
-        self.train_items = train_items
         self.rng = rng
-        self._cursor = 0
+        self.sampler = None
+        self.val_sources: list[str] = []
+        if self.cfg.train_mix:
+            mix = parse_mix(self.cfg.train_mix)
+            sources = {name: load_source(name) for name, _ in mix}
+            self.sampler = MixSampler(sources, dict(mix), rng)
+            print(f"[{self.cfg.run_name}] train mix: " + ", ".join(f"{n}={len(sources[n])} items (w={w})" for n, w in mix), flush=True)
+        else:
+            train_items = load_split("auxiliary_train")
+            rng.shuffle(train_items)
+            self.train_items = train_items
+            self._cursor = 0
+        val_rng = random.Random(self.cfg.seed + 1)
+        if self.cfg.val_mix:
+            self.val = []
+            for name, count in parse_mix(self.cfg.val_mix):
+                items = load_source(name)
+                val_rng.shuffle(items)
+                taken = 0
+                for it in items:
+                    e = make_example(self.rt.prompt, it, None, self.cfg.max_len)
+                    if e is None:
+                        continue
+                    self.val.append(e)
+                    self.val_sources.append(name)
+                    taken += 1
+                    if taken >= int(count):
+                        break
+            print(f"[{self.cfg.run_name}] val mix: " + ", ".join(f"{n}={self.val_sources.count(n)}" for n, _ in parse_mix(self.cfg.val_mix)), flush=True)
+        else:
+            val_items = load_split("validation")
+            val_rng.shuffle(val_items)
+            self.val = [e for e in (make_example(self.rt.prompt, it, None, self.cfg.max_len) for it in val_items[: self.cfg.n_val * 2])
+                        if e is not None][: self.cfg.n_val]
+            self.val_sources = ["mmlu_val"] * len(self.val)
 
     def next_batch(self) -> list[Example]:
+        shuffle_rng = self.rng if self.cfg.shuffle_options else None
+        if self.sampler is not None:
+            return self.sampler.next(self.cfg.batch_size, lambda it: make_example(self.rt.prompt, it, shuffle_rng, self.cfg.max_len))
         out = []
         while len(out) < self.cfg.batch_size:
             it = self.train_items[self._cursor % len(self.train_items)]
             self._cursor += 1
-            e = make_example(self.rt.prompt, it, self.rng if self.cfg.shuffle_options else None, self.cfg.max_len)
+            e = make_example(self.rt.prompt, it, shuffle_rng, self.cfg.max_len)
             if e is not None:
                 out.append(e)
         return out
@@ -132,17 +164,25 @@ class Trainer:
         self.model.eval()
         self.head.eval()
         correct, nll, brier, n = 0, 0.0, 0.0, 0
-        for i in range(0, len(self.val), 16):
-            batch = collate(self.val[i : i + 16], self.pad_id, self.device)
+        per_src: dict[str, list[int]] = {}
+        bs = 16 if self.cfg.max_len <= 1024 else 4
+        for i in range(0, len(self.val), bs):
+            batch = collate(self.val[i : i + bs], self.pad_id, self.device)
             z = self.logits_for(batch).float()
             logp = z.log_softmax(-1)
-            correct += (z.argmax(-1) == batch["y"]).sum().item()
+            hits = (z.argmax(-1) == batch["y"])
+            correct += hits.sum().item()
             nll += -logp[torch.arange(z.shape[0]), batch["y"]].sum().item()
             brier += brier_loss(z, batch["y"]).item() * z.shape[0]
             n += z.shape[0]
+            for j, h in enumerate(hits.tolist()):
+                per_src.setdefault(self.val_sources[i + j] if self.val_sources else "val", []).append(int(h))
         self.model.train()
         self.head.train()
-        return {"val_acc": correct / n, "val_nll": nll / n, "val_brier": brier / n, "n": n}
+        out = {"val_acc": correct / n, "val_nll": nll / n, "val_brier": brier / n, "n": n}
+        if len(per_src) > 1:
+            out["val_acc_by_source"] = {k: round(sum(v) / len(v), 4) for k, v in per_src.items()}
+        return out
 
     # ----- checkpoints -----
     def save(self, tag: str = "last") -> None:
@@ -153,7 +193,8 @@ class Trainer:
         if self.peft_model is not None:
             self.peft_model.save_pretrained(str(d / "adapter"))
         if tag == "last":
-            torch.save({"opt": self.opt.state_dict(), "step": self.step, "cursor": self._cursor,
+            torch.save({"opt": self.opt.state_dict(), "step": self.step,
+                        "cursor": self.sampler.cursor if self.sampler is not None else self._cursor,
                         "rng": self.rng.getstate(), "best_val": self.best_val}, d / "state.pt")
 
     def resume(self) -> bool:
@@ -170,7 +211,11 @@ class Trainer:
 
             set_peft_model_state_dict(self.peft_model, load_file(str(d / "adapter" / "adapter_model.safetensors")))
         self.opt.load_state_dict(st["opt"])
-        self.step, self._cursor, self.best_val = st["step"], st["cursor"], st["best_val"]
+        self.step, self.best_val = st["step"], st["best_val"]
+        if self.sampler is not None:
+            self.sampler.cursor = dict(st["cursor"])
+        else:
+            self._cursor = st["cursor"]
         self.rng.setstate(st["rng"])
         print(f"[{self.cfg.run_name}] resumed from step {self.step}", flush=True)
         return True
@@ -218,8 +263,9 @@ class Trainer:
                 run_loss, run_n = 0.0, 0
             if self.step % self.cfg.eval_every == 0 or self.step == self.cfg.steps:
                 ev = self.evaluate()
+                by_src = " ".join(f"{k.replace('synth:', '').replace(':dev', '')}={v:.3f}" for k, v in ev.get("val_acc_by_source", {}).items())
                 print(f"[{self.cfg.run_name}] step {self.step} val_acc {ev['val_acc']:.3f} val_nll {ev['val_nll']:.3f} "
-                      f"val_brier {ev['val_brier']:.3f} (n={ev['n']})", flush=True)
+                      f"val_brier {ev['val_brier']:.3f} (n={ev['n']}) {by_src}", flush=True)
                 with self.log_path.open("a") as f:
                     f.write(json.dumps({"step": self.step, **ev}) + "\n")
                 if self.best_val is None or ev["val_nll"] < self.best_val:

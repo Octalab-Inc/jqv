@@ -36,6 +36,8 @@ def main():
     ap.add_argument("--no-shuffle-options", action="store_true")
     ap.add_argument("--grad-accum", type=int, default=1, help="micro-batches per step (effective batch unchanged)")
     ap.add_argument("--grad-checkpointing", action="store_true")
+    ap.add_argument("--train-mix", default=None, help="weighted sources, e.g. synth:long_policy=0.25,synth:temporal_numeric=0.25,synth:probability=0.2,mmlu=0.3")
+    ap.add_argument("--val-mix", default=None, help="validation counts per source, e.g. synth:long_policy:dev=96,synth:temporal_numeric:dev=96,synth:probability:dev=96,mmlu_val=64")
     ap.add_argument("--resume", action="store_true")
     add_model_args(ap)
     a = ap.parse_args()
@@ -43,7 +45,7 @@ def main():
                       lr=a.lr, head_lr=a.head_lr, brier_weight=a.brier_weight, max_len=a.max_len, seed=a.seed,
                       log_every=a.log_every, eval_every=a.eval_every, ckpt_every=a.ckpt_every, n_val=a.n_val,
                       pointer_rank=a.pointer_rank, shuffle_options=not a.no_shuffle_options,
-                      grad_accum=a.grad_accum, grad_checkpointing=a.grad_checkpointing)
+                      grad_accum=a.grad_accum, grad_checkpointing=a.grad_checkpointing, train_mix=a.train_mix, val_mix=a.val_mix)
     rt = load_rt(a)
     Trainer(rt, cfg, RESULTS / "train").train(resume=a.resume)
 
