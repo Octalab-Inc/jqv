@@ -1,6 +1,6 @@
 ---
 title: 合成データによる targeted LoRA で弱い family の精度を上げる（14B で判定し、効けば 32B）
-status: draft
+status: pending
 priority: P1
 created_at: 2026-09-21T10:11:14+09:00
 depends_on:
@@ -33,7 +33,7 @@ depends_on:
   `--max-len 4096`、長さでバケット化した batch（step 時間の安定化）。`--train-mix` のような指定方法を追加する。
 - 14B の学習: slot + LoRA r=16、λ=0、600〜1,000 step × batch 8、seed 固定。最初の 20 step で step 時間を測って ETA を報告し、
   100 step ごとの val（synth dev の混合）を出す。checkpoint と `--resume` を使う。
-- 評価（14B）: synth test（family 別、各 500 問）、MMLU test 800（T は val 400 で再学習）、JevBench public hard（family 別 + 全体、bootstrap CI）。
+- 評価（14B）: synth test（family 別と `dependency_hops` 別、各 500 問）、MMLU test 800（T は val 400 で再学習）、JevBench public hard（family 別 + 全体、bootstrap CI）。
   比較は zero-shot 14B との対応比較（McNemar）。
 - gate を通った場合の 32B: 同じ設定で学習し、同じ評価 + JMMLU 800 を行い、README の Findings / Backbone / JevBench 節を更新する。
 - gate に落ちた場合: 負の結果（設定、学習曲線、family 別の数値）を README に記録して終了する。

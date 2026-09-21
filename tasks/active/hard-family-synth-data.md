@@ -1,6 +1,6 @@
 ---
 title: JevBench hard の弱い family（long_policy / temporal_numeric / probability）を狙った合成データを、正解をプログラム生成して作る
-status: draft
+status: pending
 priority: P1
 created_at: 2026-09-21T10:11:14+09:00
 depends_on: []
@@ -40,6 +40,9 @@ JevBench hard で jqv-32B が弱い 3 family（long_policy 9/19、temporal_numer
 - 汚染チェック `scripts/synth_contamination.py`: JevBench public 全 231 問との 8-gram 重複と固有名・ID の再利用を検出する。
 - `scripts/jevbench_families.py`: `results/jevbench/<label>/hard/` の結果から family 別の正解数を出す（後続タスクの共通の物差し）。
 - solver の単体テスト `tests/test_synth.py`（手計算済みのケースを含む）。
+- multi_hop は独立した第 4 family にせず、3 family を横断する属性にする: solver の導出トレースから `meta.dependency_hops`（正解に必要な中間事実の数）と
+  `meta.reasoning_depth`（導出 DAG の最長経路）を全問に記録し、family ごとに hops が 1〜5 程度に分布するよう生成する。difficulty 表には hops 別の精度も載せ、
+  「multi-hop ほど本当に精度が落ちるか」を後で分析できるようにする。
 
 ## Out
 
@@ -53,7 +56,7 @@ JevBench hard で jqv-32B が弱い 3 family（long_policy 9/19、temporal_numer
 - 3 family × train ≥ 2,000 / dev 300 / test 500 問が `data/synth/` にあり、全問の正解が solver 由来で、`tests/test_synth.py` が通る。
 - `scripts/eval.py --dataset synth:<family>:dev` が動き、32B zero-shot の dev 精度が各 family で JevBench 精度 ±10 pt に入る（入らない場合は理由と調整履歴を `results/synth_difficulty.md` に残す）。14B は 32B より低い。
 - 汚染チェックが通る（8-gram 重複のある問題が 1% 未満、固有名・ID の再利用なし）。
-- `results/synth_difficulty.md` に model / T / 精度 / surface-answer rate / 生成と評価の所要時間が記録されている。
+- `results/synth_difficulty.md` に model / T / 精度（family 別と hops 別）/ surface-answer rate / 生成と評価の所要時間が記録されている。
 - 生成・評価は進捗行と ETA を出すログで実行されている。
 
 # Verify
@@ -69,5 +72,4 @@ uv run python scripts/jevbench_families.py    # 既存の 32B 結果で long_pol
 
 # Open Questions
 
-- paraphrase の出所: ローカル 14B（遅いが無料）か、API の teacher（コスト）か、テンプレートのみか。既定はテンプレートのみ + 14B を 2 時間まで。
-- multi_hop（10/18）も対象に加えるか。
+- なし（2026-09-21 決定: paraphrase はテンプレート + ローカル 14B を最大 2 時間、外部 API の teacher は使わない。multi_hop は横断属性として扱う）。
