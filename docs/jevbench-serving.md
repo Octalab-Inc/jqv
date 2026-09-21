@@ -5,7 +5,7 @@ branch (block attention mask, no cross-question leakage), and the answer is read
 logits in one forward pass, with no decoding. It serves TypeSafe's wire format (`POST /v1/systemone`), so the
 JevBench `typesafe` adapter works unchanged. This page gives the exact configuration that Benchmark Heaven measured
 as a partial row in JevBench v1.2.7 ([issue #6](https://github.com/fstandhartinger/jevbench/issues/6)) and how to
-run it on your own hardware. The rest of the repository's README is in Japanese.
+run it on your own hardware. The full experimental report is in [report.md](report.md).
 
 ## Measured configuration
 
