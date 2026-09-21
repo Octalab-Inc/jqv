@@ -763,6 +763,29 @@ hops 別の精度は LoRA で 0.62 / 0.67 / 0.67 / 0.74（2〜5 hop）と単調�
 
 次: 同じ recipe を 32B で学習し（micro 1 × 累積 8 でメモリを抑える）、synth test、MMLU 800、JMMLU 800、JevBench public hard を同じ手順で測る。
 
+## サンプル: jqgrep（jqv による cascade 型 semantic code search、`jqgrep/`）
+
+jqv を「1 つの長い state に多数の decision を掛けるアプリ」として使う例。index も埋め込みも持たず、毎回 live のファイルツリーを見る。
+設計は jegrep（Jev で grep する Rust 製ツール）の cascade に倣い、(0) LLM なしの字句選別（query 語、path、symbol、コード優先の事前重み）で
+150 件 → (1) 12 ファイル分の sketch を 1 つの state にまとめ、ファイルごとの yes/no と listwise「どれが該当か」を同じ forward で問い 20 件 →
+(2) ファイル全文を state にして、40 行・stride 30 の range ごとの yes/no、range 間の listwise、ファイルの関連・役割・production・曖昧性を
+1 回の `decide` で判定し、隣接 range を merge して `path:start-end` を返す。閾値は絶対値でなく相対（best − 0.25 と top-k）。
+温度は MMLU で学習したものの流用で、コード検索用には校正していない（jegrep の「絶対的な yes/no 確率」の主張はここでは採らない）。
+
+このリポジトリ（4,751 ファイル）での 3 クエリ（`jqgrep/README.md` に詳細）:
+
+| クエリ | 期待ファイル | Qwen3-14B | Qwen3-1.7B |
+|---|---|---|---|
+| where is the block attention mask for packed sequences built | `jqv/engine/packed.py` | **1 位** `packed.py:31-69`（0.91、stage 1 で唯一残る 0.99） | 3 位（0.55） |
+| fitting the calibration temperature on the validation split | `scripts/fit_temperature.py` | **1 位** `fit_temperature.py:31-68`（0.90） | `jqv/calibration.py` が 2 位（0.61） |
+| handling of the TypeSafe wire format (choice / noul / score questions) | `jqv/systemone.py` | **1 位** `systemone.py:17-77`（0.77） | 上位 3 に入らず |
+
+- 14B では stage 1 のスコアが鋭く（正解ファイル 0.97〜0.99、他は 0.69 以下）、相対閾値で stage 2 に残るのは 1 ファイルになる。
+  役割は 3 件とも primary_implementation。1 クエリ 145〜173 秒で、うちモデルロード約 60 秒（`--server` で回避）、stage 1 が約 70 秒（14 forward）、stage 2 は約 10 秒。
+- 1.7B はほぼ全ての sketch に yes と言う（0.7〜0.8）ため、順位は listwise と字句の事前重みで決まり、コードを引用した tasks/ のメモがコード本体より上に来る。
+  既定 backbone は 14B が実用の下限。
+- 未実施: ripgrep / BM25 / 埋め込み / jqv の engine 別 / Jev を同じ検索 benchmark で比べる評価と、`--threshold` を意味のある値にするための校正。
+
 ## 文字数え問題（"how many 'r' are in strawberry?"）を decision readout で解けるか
 
 LLM が苦手な文字単位の数え上げを、生成せずに分布を読む jqv でどう扱えるかの小さな probe（`scripts/letter_count_probe.py`、
