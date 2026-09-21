@@ -52,6 +52,15 @@ def procedure_paragraphs(rng: random.Random, names: Names, kind: str) -> list[st
     return out[: rng.randint(2, len(out))]
 
 
+def disagrees(p, surface_p, as_bin: bool) -> bool:
+    """True when the distractor's number leads to a different answer than the truth."""
+    if surface_p is None:
+        return True
+    if as_bin:
+        return bin_of(p) is not None and bin_of(p) != bin_of(surface_p)
+    return (p > Fraction(1, 2)) != (surface_p > Fraction(1, 2))
+
+
 BINS = [("under_25_percent", Fraction(0), Fraction(1, 4)), ("25_to_50_percent", Fraction(1, 4), Fraction(1, 2)),
         ("50_to_75_percent", Fraction(1, 2), Fraction(3, 4)), ("over_75_percent", Fraction(3, 4), Fraction(1))]
 
@@ -165,7 +174,10 @@ def acceptance_sampling(rng: random.Random, names: Names, facts: dict | None = N
         note,
     ])
     sig = f"{N}|{D}|{n_old}|{n_new}|{c}|{received}|{cutover}"
-    if f.get("r", rng.random()) < 0.55:
+    r = f.get("r", rng.random())
+    if "_retry" not in f and rng.random() < 0.7 and not disagrees(p, wp, as_bin=r >= 0.45):
+        return None  # the caller draws again: we want items where the shortcut gives a different answer
+    if r < 0.45:
         return noul_event(state, f"Will the inspection sample for lot {lot} contain at least {c} defective unit{'s' if c > 1 else ''} (so that the lot is rejected)? "
                           f"Answer with probabilities that follow from the facts above.",
                           f"At least {c} of the drawn units {'is' if c == 1 else 'are'} defective and the lot is rejected.",
@@ -230,11 +242,13 @@ def screening_posterior(rng: random.Random, names: Names, facts: dict | None = N
     ])
     sig = f"{prev}|{g}|{sens}|{spec}|{positive}"
     r = f.get("r", rng.random())
-    if r < 0.45:
+    if "_retry" not in f and rng.random() < 0.6 and not disagrees(post, naive, as_bin=r >= 0.7):
+        return None
+    if r < 0.4:
         return noul_event(state, f"Does {person} actually have the condition? Answer with probabilities that follow from the facts above.",
                           "The person has the condition.", "The person does not have the condition.", post, tr, "screening_posterior", sig,
                           "accuracy_as_posterior", naive)
-    if r < 0.7:
+    if r < 0.6:
         more = post > Fraction(1, 2)
         tr.derive("verdict", ["posterior"], f"{f2(post)} is {'above' if more else 'below'} 0.5.")
         return SynthItem(family="probability", scenario="screening_posterior", state=state, qtype="noul",
@@ -257,8 +271,8 @@ def redundancy(rng: random.Random, names: Names, facts: dict | None = None) -> S
     n = f.get("n", rng.choice([3, 4, 5, 6]))
     tol = f.get("tol", rng.randint(1, n - 1))  # tolerates up to tol failures; fails if >= tol+1 fail
     k = tol + 1
-    years_per_fail = f.get("years_per_fail", rng.choice([10, 20, 25, 40, 50]))
-    months = f.get("months", rng.choice([3, 6, 12, 18, 24]))
+    years_per_fail = f.get("years_per_fail", rng.choice([4, 5, 8, 10, 15, 20]))
+    months = f.get("months", rng.choice([6, 12, 18, 24, 36, 48]))
     p = Fraction(months, 12 * years_per_fail)
     if p >= 1:
         return None
@@ -289,7 +303,10 @@ def redundancy(rng: random.Random, names: Names, facts: dict | None = None) -> S
         note,
     ])
     sig = f"{n}|{k}|{years_per_fail}|{months}"
-    if f.get("r", rng.random()) < 0.55:
+    r = f.get("r", rng.random())
+    if "_retry" not in f and rng.random() < 0.7 and not disagrees(pf, wp, as_bin=r >= 0.45):
+        return None
+    if r < 0.45:
         return noul_event(state, f"Will the {sysname} fail during the review period? Answer with probabilities that follow from the facts above.",
                           f"At least {k} of the {n} units fail within the period.", f"Fewer than {k} units fail and the {sysname} keeps operating.",
                           pf, tr, "redundancy", sig, kind, wp)
@@ -357,7 +374,7 @@ def ev_choice(rng: random.Random, names: Names, facts: dict | None = None) -> Sy
         note,
     ])
     sig = f"{fixed}|{base}|{bonus}|{hits}|{trials}|{three}|{sorted(evs.values())}"
-    if f.get("r", rng.random()) < 0.6:
+    if f.get("r", rng.random()) < 0.7:
         crit = {k: f"{k.replace('_', ' ').title()} has the highest expected value." for k in evs}
         return SynthItem(family="probability", scenario="ev_choice", state=state, qtype="choice",
                          instructions="Under the procurement policy, which option should be chosen?", criteria=crit, expected=best,
@@ -378,7 +395,7 @@ def supplier_mix(rng: random.Random, names: Names, facts: dict | None = None) ->
     f = facts or {}
     tr = Trace()
     org = f.get("org", names.org(rng.choice(["Manufacturing", "Components", "Industries"])))
-    k = f.get("k", rng.choice([2, 3]))
+    k = f.get("k", rng.choice([2, 3, 3]))
     sups = f.get("sups", [names.org(rng.choice(["Components", "Textiles", "Foods", "Engineering"])) for _ in range(k)])
     while len(set(sups)) < k:
         sups = [names.org(rng.choice(["Components", "Textiles", "Foods", "Engineering"])) for _ in range(k)]
@@ -400,7 +417,12 @@ def supplier_mix(rng: random.Random, names: Names, facts: dict | None = None) ->
     posts = [j / total for j in joints]
     i_best = max(range(k), key=lambda i: posts[i])
     tr.derive("posterior", ["total"], "P(supplier | defective): " + ", ".join(f"{s} {f2(p)}" for s, p in zip(sups, posts)) + ".")
-    kind = f.get("kind", rng.choice(["highest_rate", "largest_share"]))
+    i_rate = max(range(k), key=lambda i: rates[i])
+    i_share = max(range(k), key=lambda i: shares[i])
+    if "_retry" not in f and i_rate == i_best and i_share == i_best and rng.random() < 0.85:
+        return None  # both shortcuts agree with the truth: not informative
+    kinds = [kk for kk, ii in (("highest_rate", i_rate), ("largest_share", i_share)) if ii != i_best] or ["highest_rate", "largest_share"]
+    kind = f.get("kind", rng.choice(kinds))
     if kind == "highest_rate":
         i_wrong = max(range(k), key=lambda i: rates[i])
         note = f"Quality note ({names.person()}): {sups[i_wrong]} has the worst defect rate, so a defective unit almost certainly came from them."

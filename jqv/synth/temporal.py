@@ -118,7 +118,7 @@ def warranty_month_end_tz(rng: random.Random, names: Names, facts: dict | None =
     claim_id = f.get("claim_id", names.ident("CL", 6))
     customer = names.person()
     home_city, home_tz = f.get("home_city", names.city())
-    delivery = f.get("delivery", rand_date(rng, prefer_month_end=0.55))
+    delivery = f.get("delivery", rand_date(rng, prefer_month_end=0.75))
     n_months = f.get("n_months", rng.choice([6, 12, 18, 24, 30, 36]))
     tr.given("delivery", f"Delivery date {fmt_date(delivery)}.")
     tr.given("term", f"Term {n_months} months.")
@@ -143,19 +143,21 @@ def warranty_month_end_tz(rng: random.Random, names: Names, facts: dict | None =
     home_off = utc_offset_str(datetime.combine(end_date, time(12, 0), tzinfo=home))
 
     # claim location and time
-    same_tz = f.get("same_tz", rng.random() < 0.3)
+    same_tz = f.get("same_tz", rng.random() < 0.15)
     if same_tz:
         claim_city, claim_tz = home_city, home_tz
     else:
-        claim_city, claim_tz = names.city()
+        claim_city, claim_tz = f.get("claim_city", names.city())
         while claim_tz == home_tz:
             claim_city, claim_tz = names.city()
     ctz = ZoneInfo(claim_tz)
-    # place the claim within +-36h of the end instant, concentrated near it
-    delta_minutes = f.get("delta_minutes", int(rng.gauss(0, 9 * 60)))
+    # place the claim within +-36h of the end instant, concentrated near it; prefer claims that a naive reading
+    # (wrong end date or no time-zone conversion) would classify differently from the true rule
+    delta_minutes = f.get("delta_minutes", int(rng.gauss(0, 6 * 60)))
     delta_minutes = max(-36 * 60, min(36 * 60, delta_minutes))
     if abs(delta_minutes) < 20:  # keep a clear margin
         delta_minutes = 20 if delta_minutes >= 0 else -20
+    want_disagree = "delta_minutes" not in f and rng.random() < 0.7
     claim_utc = end_instant.astimezone(ZoneInfo("UTC")) + timedelta(minutes=delta_minutes)
     claim_local = claim_utc.astimezone(ctz)
     claim_local = claim_local.replace(second=0, microsecond=0)
@@ -195,6 +197,12 @@ def warranty_month_end_tz(rng: random.Random, names: Names, facts: dict | None =
                 f"{fmt_date(claim_local.date())} is {'before' if wrong_in else 'after'} the end of {fmt_date(end_date)}, so the "
                 f"claim is {'in time' if wrong_in else 'late'}. (No conversion applied.)")
     surface_in = wrong_in
+    if want_disagree and surface_in == in_time and f.get("_retry", 0) < 6:
+        # try another claim time on the other side of the true deadline
+        new_delta = -delta_minutes + rng.choice([-1, 1]) * rng.randint(30, 20 * 60)
+        return warranty_month_end_tz(rng, names, {**f, "delivery": delivery, "n_months": n_months, "home_city": (home_city, home_tz),
+                                                  "same_tz": same_tz, "claim_city": (claim_city, claim_tz), "delta_minutes": new_delta,
+                                                  "kind": kind, "_retry": f.get("_retry", 0) + 1})
 
     doc_kind = rng.choice(["EXTENDED WARRANTY CERTIFICATE", "SERVICE PLAN CERTIFICATE", "PROTECTION PLAN RECORD"])
     rule = rng.choice([
@@ -226,7 +234,7 @@ def warranty_month_end_tz(rng: random.Random, names: Names, facts: dict | None =
     ])
 
     variant = f.get("variant", rng.random())
-    if variant < 0.5:
+    if variant < 0.35:
         item = SynthItem(
             family="temporal_numeric", scenario="warranty_month_end_tz", state=state, qtype="noul",
             instructions=f"Was claim {claim_id} reported within the {rng.choice(['warranty', 'plan', 'coverage'])} period of certificate {cert}?",
@@ -234,7 +242,7 @@ def warranty_month_end_tz(rng: random.Random, names: Names, facts: dict | None =
                       "false": "The claim was received after the period had ended."},
             expected="yes" if in_time else "no", trace=tr, signature=f"{delivery}|{n_months}|{home_tz}|{claim_utc.isoformat()}",
             distractor=kind, surface_answer="yes" if surface_in else "no")
-    elif variant < 0.8:
+    elif variant < 0.75:
         cands = {snake_date(end_date)}
         cands.add(snake_date(delivery + timedelta(days=30 * n_months)))
         cands.add(snake_date(end_date - timedelta(days=1)))
@@ -292,6 +300,11 @@ def business_day_deadline(rng: random.Random, names: Names, facts: dict | None =
         h = received + timedelta(days=rng.randint(1, n_days + 6))
         if h.weekday() < 5:
             holidays.add(h)
+    if not any(h.weekday() < 5 and received < h <= received + timedelta(days=n_days + 2) for h in holidays):
+        h = received + timedelta(days=rng.randint(1, max(1, n_days)))
+        while h.weekday() >= 5:
+            h += timedelta(days=1)
+        holidays.add(h)
     far = f.get("far", received + timedelta(days=rng.randint(30, 60)))
     holidays.add(far)
     holidays = set(f.get("holidays", holidays))
@@ -324,7 +337,8 @@ def business_day_deadline(rng: random.Random, names: Names, facts: dict | None =
     cal_due = eff + timedelta(days=n_days)
     no_hol_due, _ = business_days_after(eff, n_days, set())
     no_ah_due, _ = business_days_after(received, n_days, holidays)
-    kind = f.get("kind", rng.choice(["calendar_days", "ignored_holiday", "ignored_cutoff"]))
+    kinds = [k for k, d in (("calendar_days", cal_due), ("ignored_holiday", no_hol_due), ("ignored_cutoff", no_ah_due)) if d != due]
+    kind = f.get("kind", rng.choice(kinds or ["calendar_days"]))
     if kind == "calendar_days":
         wrong = cal_due
         note = f"Team note ({names.person()}): {n_days} days from {fmt_date(received)} is {fmt_date(cal_due)}; I have put that in the tracker."
@@ -352,8 +366,10 @@ def business_day_deadline(rng: random.Random, names: Names, facts: dict | None =
         note,
     ])
 
-    if f.get("variant", rng.random()) < 0.5:
-        sent = f.get("sent", due + timedelta(days=rng.choice([-2, -1, 0, 1, 2, 3])))
+    if f.get("variant", rng.random()) < 0.35:
+        lo, hi = sorted([due, wrong])
+        between = [lo + timedelta(days=i) for i in range(1, (hi - lo).days + 1)] if hi > lo else []
+        sent = f.get("sent", rng.choice(between) if between and rng.random() < 0.7 else due + timedelta(days=rng.choice([-2, -1, 0, 1, 2, 3])))
         on_time = sent <= due
         tr.given("sent", f"Response sent {fmt_date(sent)}.")
         tr.derive("verdict", ["due", "sent"], f"Sent on {fmt_date(sent)}, {'on or before' if on_time else 'after'} the due date.")
@@ -387,8 +403,16 @@ def service_months_band(rng: random.Random, names: Names, facts: dict | None = N
     org = f.get("org", names.org(rng.choice(["Industries", "Logistics", "Technologies", "Foods", "Medical"])))
     emp = names.person()
     emp_id = f.get("emp_id", names.ident("EMP", 5))
-    hire = f.get("hire", rand_date(rng, 2019, 2025, prefer_month_end=0.4))
-    ref = f.get("ref", hire + timedelta(days=rng.randint(200, 2200)))
+    hire = f.get("hire", rand_date(rng, 2019, 2025, prefer_month_end=0.6))
+    a_b_c = f.get("a_b_c", sorted(rng.sample([6, 12, 18, 24, 36, 48, 60], 3)))
+    if "ref" in f:
+        ref = f["ref"]
+    else:  # put the reference date within a few days of a band boundary anniversary so the day-of-month rule matters
+        target = rng.choice([m + d for m in a_b_c for d in (-1, 0)])
+        anniv, _ = add_months_same_day(hire, target)
+        ref = anniv + timedelta(days=rng.choice([-3, -2, -1, 0, 0, 1, 2, 3]))
+        if ref <= hire + timedelta(days=60):
+            ref = hire + timedelta(days=rng.randint(200, 2200))
     leave_days = f.get("leave_days", rng.choice([0, 0, 12, 21, 28, 31, 35, 45, 60, 75, 92]))
     limit = f.get("limit", rng.choice([30, 31, 45, 60]))
     tr.given("hire", f"Hired {fmt_date(hire)}.")
@@ -423,7 +447,7 @@ def service_months_band(rng: random.Random, names: Names, facts: dict | None = N
     naive = (ref.year - start.year) * 12 + (ref.month - start.month)  # ignores day of month
     naive_hire = (ref.year - hire.year) * 12 + (ref.month - hire.month)
 
-    a, b, c = sorted(rng.sample([6, 12, 18, 24, 36, 48, 60], 3))
+    a, b, c = a_b_c
     bands = [f"fewer than {a} complete months", f"{a} to {b - 1} complete months", f"{b} to {c - 1} complete months",
              f"{c} complete months or more"]
     band = 0 if months < a else 1 if months < b else 2 if months < c else 3
@@ -454,7 +478,7 @@ def service_months_band(rng: random.Random, names: Names, facts: dict | None = N
         "",
         note,
     ])
-    if rng.random() < 0.55:
+    if f.get("variant", rng.random()) < 0.6:
         return SynthItem(
             family="temporal_numeric", scenario="service_months_band", state=state, qtype="score",
             instructions=f"Which seniority band applies to {emp} ({emp_id}) on the reference date?",
@@ -569,8 +593,8 @@ def dst_cutoff(rng: random.Random, names: Names, facts: dict | None = None) -> S
             if prev is not None and off != prev:
                 candidates.append(d)
             prev = off
-    if candidates and rng.random() < 0.7:
-        d0 = rng.choice(candidates) + timedelta(days=rng.randint(-3, 3))
+    if candidates and rng.random() < 0.9:
+        d0 = rng.choice(candidates) + timedelta(days=rng.randint(-2, 2))
     else:
         d0 = date(year, rng.randint(1, 12), rng.randint(1, 28))
     while d0.weekday() >= 5:
@@ -578,7 +602,7 @@ def dst_cutoff(rng: random.Random, names: Names, facts: dict | None = None) -> S
     d0 = f.get("d0", d0)
     # order time in other city, within +-4h of the cutoff instant
     cutoff_instant = datetime.combine(d0, cutoff, tzinfo=home)
-    delta = f.get("delta", timedelta(minutes=rng.choice([-240, -180, -120, -90, -60, -45, -30, -20, 20, 30, 45, 60, 90, 120, 180, 240])))
+    delta = f.get("delta", timedelta(minutes=rng.choice([-90, -75, -60, -45, -30, -20, 20, 30, 45, 60, 75, 90])))
     order_instant = (cutoff_instant + delta).astimezone(other).replace(second=0, microsecond=0)
     same_day = order_instant.astimezone(home) <= cutoff_instant and order_instant.astimezone(home).date() == d0
     home_off = utc_offset_str(cutoff_instant)
@@ -639,7 +663,7 @@ def dst_cutoff(rng: random.Random, names: Names, facts: dict | None = None) -> S
         "",
         note,
     ])
-    if rng.random() < 0.6:
+    if f.get("variant", rng.random()) < 0.45:
         return SynthItem(
             family="temporal_numeric", scenario="dst_cutoff", state=state, qtype="noul",
             instructions=f"Is order {order_id} dispatched on {fmt_date(d0)} under the same-day rule?",
@@ -703,6 +727,8 @@ def unit_threshold(rng: random.Random, names: Names, facts: dict | None = None) 
     exceeded = total > cap
     tr.derive("verdict", ["sum"], f"Cap {cap} {cap_unit}: {'exceeded' if exceeded else 'not exceeded'}.")
     naive_total = sum(Decimal(s.split()[0].replace(',', '')) for _, s in readings)
+    if f.get("_retry", 0) < 8 and (naive_total > cap) == exceeded and rng.random() < 0.8:
+        return unit_threshold(rng, names, {**f, "_retry": f.get("_retry", 0) + 1})
     note = (f"Site note ({names.person()}): adding the three figures as reported gives {naive_total:,}, "
             f"{'well over' if naive_total > cap else 'under'} the cap of {cap}.")
     state = "\n".join([
@@ -717,7 +743,7 @@ def unit_threshold(rng: random.Random, names: Names, facts: dict | None = None) 
         "",
         note,
     ])
-    if rng.random() < 0.6:
+    if f.get("variant", rng.random()) < 0.5:
         return SynthItem(
             family="temporal_numeric", scenario="unit_threshold", state=state, qtype="noul",
             instructions=f"Did site {site} exceed the quarterly cap in permit condition?",
