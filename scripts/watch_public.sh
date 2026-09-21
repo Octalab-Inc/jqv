@@ -5,6 +5,7 @@
 #   bash scripts/watch_public.sh --status                   # one-shot summary
 #   bash scripts/watch_public.sh --once                     # one poll cycle, then exit
 #   pkill -f 'watch_publi[c]\.sh$'                          # stop the loop
+#   JQV_WATCH_ISSUE=9 JQV_WATCH_ENDPOINT=0 nohup bash scripts/watch_public.sh > /dev/null 2>&1 &   # issue comments only, no endpoint checks
 #
 # Events are appended to results/public/watch_public.log as "<ts> <KIND> <detail>":
 #   WATCHER START/STOP, COMMENT (new comment on the issue), STATE (issue opened/closed),
@@ -180,6 +181,14 @@ check_traffic() {
 cycle() {
   local now n
   check_issue
+  if [ "${JQV_WATCH_ENDPOINT:-1}" = "0" ]; then
+    now=$(date +%s)
+    if [ $((now - last_hb)) -ge "$HB_EVERY" ]; then
+      n=$(grep -c . "$SEEN" 2>/dev/null); n=${n:-0}
+      log "HB issue-only issue=$(cat "$STATE_FILE" 2>/dev/null) comments=$n"; last_hb=$now
+    fi
+    return 0
+  fi
   check_endpoint
   check_traffic
   now=$(date +%s)

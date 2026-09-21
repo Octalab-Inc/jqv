@@ -2,133 +2,133 @@
   "train": {
     "n": 2000,
     "hops_hist": {
-      "2": 133,
-      "3": 416,
-      "4": 1050,
-      "5": 401
+      "2": 318,
+      "3": 438,
+      "4": 815,
+      "5": 429
     },
     "qtype": {
-      "choice": 1201,
-      "noul": 799,
+      "choice": 1361,
+      "noul": 639,
       "score": 0
     },
     "scenarios": {
-      "acceptance_sampling": 293,
-      "draw_outcomes": 262,
-      "ev_choice": 518,
-      "redundancy": 133,
-      "screening_posterior": 496,
-      "supplier_mix": 298
+      "acceptance_sampling": 437,
+      "draw_outcomes": 121,
+      "ev_choice": 319,
+      "redundancy": 318,
+      "screening_posterior": 520,
+      "supplier_mix": 285
     },
     "state_tokens": {
       "min": 200,
-      "median": 339,
-      "max": 549
+      "median": 365,
+      "max": 551
     },
     "expected_hist": {
-      "25_to_50_percent": 124,
-      "50_to_75_percent": 80,
-      "both_first_kind": 18,
-      "both_second_kind": 16,
-      "no": 523,
-      "one_of_each": 128,
-      "option_a": 145,
-      "option_b": 170,
+      "25_to_50_percent": 244,
+      "50_to_75_percent": 150,
+      "both_first_kind": 6,
+      "both_second_kind": 11,
+      "no": 471,
+      "one_of_each": 47,
+      "option_a": 71,
+      "option_b": 116,
       "option_c": 41,
-      "over_75_percent": 37,
-      "supplier_a": 72,
-      "supplier_b": 41,
-      "supplier_c": 22,
-      "under_25_percent": 307,
-      "yes": 276
+      "over_75_percent": 57,
+      "supplier_a": 35,
+      "supplier_b": 31,
+      "supplier_c": 20,
+      "under_25_percent": 532,
+      "yes": 168
     }
   },
   "dev": {
     "n": 300,
     "hops_hist": {
-      "2": 26,
-      "3": 67,
-      "4": 156,
-      "5": 51
+      "2": 47,
+      "3": 60,
+      "4": 135,
+      "5": 58
     },
     "qtype": {
-      "choice": 171,
-      "noul": 129,
+      "choice": 214,
+      "noul": 86,
       "score": 0
     },
     "scenarios": {
-      "acceptance_sampling": 58,
-      "draw_outcomes": 27,
-      "ev_choice": 72,
-      "redundancy": 26,
-      "screening_posterior": 82,
-      "supplier_mix": 35
+      "acceptance_sampling": 57,
+      "draw_outcomes": 15,
+      "ev_choice": 46,
+      "redundancy": 47,
+      "screening_posterior": 87,
+      "supplier_mix": 48
     },
     "state_tokens": {
-      "min": 196,
-      "median": 362,
-      "max": 551
+      "min": 209,
+      "median": 366,
+      "max": 547
     },
     "expected_hist": {
-      "25_to_50_percent": 20,
-      "50_to_75_percent": 16,
-      "both_first_kind": 2,
-      "both_second_kind": 1,
-      "no": 82,
-      "one_of_each": 8,
-      "option_a": 22,
-      "option_b": 22,
-      "option_c": 3,
-      "over_75_percent": 7,
-      "supplier_a": 9,
-      "supplier_b": 3,
-      "supplier_c": 5,
-      "under_25_percent": 53,
-      "yes": 47
+      "25_to_50_percent": 38,
+      "50_to_75_percent": 26,
+      "both_first_kind": 1,
+      "both_second_kind": 2,
+      "no": 68,
+      "one_of_each": 5,
+      "option_a": 16,
+      "option_b": 14,
+      "option_c": 7,
+      "over_75_percent": 8,
+      "supplier_a": 8,
+      "supplier_b": 5,
+      "supplier_c": 3,
+      "under_25_percent": 81,
+      "yes": 18
     }
   },
   "test": {
     "n": 500,
     "hops_hist": {
-      "2": 23,
-      "3": 115,
-      "4": 259,
-      "5": 103
+      "2": 67,
+      "3": 107,
+      "4": 221,
+      "5": 105
     },
     "qtype": {
-      "choice": 288,
-      "noul": 212,
+      "choice": 326,
+      "noul": 174,
       "score": 0
     },
     "scenarios": {
-      "acceptance_sampling": 91,
-      "draw_outcomes": 39,
-      "ev_choice": 149,
-      "redundancy": 23,
-      "screening_posterior": 123,
-      "supplier_mix": 75
+      "acceptance_sampling": 116,
+      "draw_outcomes": 25,
+      "ev_choice": 78,
+      "redundancy": 67,
+      "screening_posterior": 145,
+      "supplier_mix": 69
     },
     "state_tokens": {
-      "min": 202,
-      "median": 356,
-      "max": 554
+      "min": 207,
+      "median": 371,
+      "max": 555
     },
     "expected_hist": {
-      "25_to_50_percent": 32,
-      "50_to_75_percent": 26,
-      "both_first_kind": 1,
-      "both_second_kind": 1,
+      "25_to_50_percent": 66,
+      "50_to_75_percent": 42,
+      "both_first_kind": 4,
+      "both_second_kind": 2,
       "no": 135,
-      "one_of_each": 13,
-      "option_a": 38,
-      "option_b": 55,
-      "option_c": 9,
-      "over_75_percent": 8,
-      "supplier_a": 14,
-      "supplier_b": 10,
-      "supplier_c": 6,
-      "under_25_percent": 75,
-      "yes": 77
+      "one_of_each": 9,
+      "option_a": 16,
+      "option_b": 24,
+      "option_c": 14,
+      "over_75_percent": 17,
+      "supplier_a": 8,
+      "supplier_b": 8,
+      "supplier_c": 8,
+      "under_25_percent": 108,
+      "yes": 39
     }
   }
 }

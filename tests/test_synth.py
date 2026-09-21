@@ -125,7 +125,7 @@ def test_hypergeom_and_binomial():
 
 def test_acceptance_sampling_uses_the_version_in_force():
     rng, names = _rng(7)
-    f = {"N": 12, "D": 3, "n_old": 1, "n_new": 3, "c": 1, "cutover": date(2026, 9, 1), "received": date(2026, 9, 18), "r": 0.1}
+    f = {"N": 12, "D": 3, "n_old": 1, "n_new": 3, "c": 1, "cutover": date(2026, 9, 1), "received": date(2026, 9, 18), "r": 0.1, "_retry": 0}
     it = probability.acceptance_sampling(rng, names, f)
     assert it is not None and it.qtype == "noul" and it.expected == "yes"
     assert abs(it.target_distribution["yes"] - 34 / 55) < 1e-9
@@ -135,7 +135,7 @@ def test_acceptance_sampling_uses_the_version_in_force():
 
 def test_screening_posterior_bayes():
     rng, names = _rng(8)
-    f = {"prev": [2, 15, 30], "g": 2, "sens": Fraction(92, 100), "spec": Fraction(88, 100), "positive": True, "r": 0.1}
+    f = {"prev": [2, 15, 30], "g": 2, "sens": Fraction(92, 100), "spec": Fraction(88, 100), "positive": True, "r": 0.1, "_retry": 0}
     it = probability.screening_posterior(rng, names, f)
     assert it is not None and it.expected == "no"
     post = (0.03 * 0.92) / (0.03 * 0.92 + 0.97 * 0.12)
@@ -144,7 +144,7 @@ def test_screening_posterior_bayes():
 
 def test_redundancy_binomial():
     rng, names = _rng(9)
-    f = {"n": 3, "tol": 1, "years_per_fail": 10, "months": 24}
+    f = {"n": 3, "tol": 1, "years_per_fail": 10, "months": 24, "_retry": 0}  # _retry skips the "distractor must disagree" resampling
     it = probability.redundancy(rng, names, f)
     assert it is not None
     p = Fraction(1, 5)

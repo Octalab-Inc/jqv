@@ -175,9 +175,9 @@ def acceptance_sampling(rng: random.Random, names: Names, facts: dict | None = N
     ])
     sig = f"{N}|{D}|{n_old}|{n_new}|{c}|{received}|{cutover}"
     r = f.get("r", rng.random())
-    if "_retry" not in f and rng.random() < 0.7 and not disagrees(p, wp, as_bin=r >= 0.45):
+    if "_retry" not in f and rng.random() < 0.9 and not disagrees(p, wp, as_bin=r >= 0.3):
         return None  # the caller draws again: we want items where the shortcut gives a different answer
-    if r < 0.45:
+    if r < 0.3:
         return noul_event(state, f"Will the inspection sample for lot {lot} contain at least {c} defective unit{'s' if c > 1 else ''} (so that the lot is rejected)? "
                           f"Answer with probabilities that follow from the facts above.",
                           f"At least {c} of the drawn units {'is' if c == 1 else 'are'} defective and the lot is rejected.",
@@ -242,13 +242,13 @@ def screening_posterior(rng: random.Random, names: Names, facts: dict | None = N
     ])
     sig = f"{prev}|{g}|{sens}|{spec}|{positive}"
     r = f.get("r", rng.random())
-    if "_retry" not in f and rng.random() < 0.6 and not disagrees(post, naive, as_bin=r >= 0.7):
+    if "_retry" not in f and rng.random() < 0.85 and not disagrees(post, naive, as_bin=r >= 0.55):
         return None
-    if r < 0.4:
+    if r < 0.3:
         return noul_event(state, f"Does {person} actually have the condition? Answer with probabilities that follow from the facts above.",
                           "The person has the condition.", "The person does not have the condition.", post, tr, "screening_posterior", sig,
                           "accuracy_as_posterior", naive)
-    if r < 0.6:
+    if r < 0.55:
         more = post > Fraction(1, 2)
         tr.derive("verdict", ["posterior"], f"{f2(post)} is {'above' if more else 'below'} 0.5.")
         return SynthItem(family="probability", scenario="screening_posterior", state=state, qtype="noul",
@@ -268,11 +268,11 @@ def redundancy(rng: random.Random, names: Names, facts: dict | None = None) -> S
     f = facts or {}
     tr = Trace()
     org = f.get("org", names.org(rng.choice(["Energy", "Systems", "Technologies", "Logistics"])))
-    n = f.get("n", rng.choice([3, 4, 5, 6]))
+    n = f.get("n", rng.choice([3, 4, 5, 6, 7, 8]))
     tol = f.get("tol", rng.randint(1, n - 1))  # tolerates up to tol failures; fails if >= tol+1 fail
     k = tol + 1
-    years_per_fail = f.get("years_per_fail", rng.choice([4, 5, 8, 10, 15, 20]))
-    months = f.get("months", rng.choice([6, 12, 18, 24, 36, 48]))
+    years_per_fail = f.get("years_per_fail", rng.choice([3, 4, 5, 6, 8, 10, 12, 15, 20, 25]))
+    months = f.get("months", rng.choice([3, 6, 9, 12, 15, 18, 24, 30, 36, 48]))
     p = Fraction(months, 12 * years_per_fail)
     if p >= 1:
         return None
@@ -304,9 +304,9 @@ def redundancy(rng: random.Random, names: Names, facts: dict | None = None) -> S
     ])
     sig = f"{n}|{k}|{years_per_fail}|{months}"
     r = f.get("r", rng.random())
-    if "_retry" not in f and rng.random() < 0.7 and not disagrees(pf, wp, as_bin=r >= 0.45):
+    if "_retry" not in f and rng.random() < 0.9 and not disagrees(pf, wp, as_bin=r >= 0.3):
         return None
-    if r < 0.45:
+    if r < 0.3:
         return noul_event(state, f"Will the {sysname} fail during the review period? Answer with probabilities that follow from the facts above.",
                           f"At least {k} of the {n} units fail within the period.", f"Fewer than {k} units fail and the {sysname} keeps operating.",
                           pf, tr, "redundancy", sig, kind, wp)
@@ -331,7 +331,7 @@ def ev_choice(rng: random.Random, names: Names, facts: dict | None = None) -> Sy
     tr.derive("q", ["b"], f"P(target met) = {hits}/{trials} = {f2(q)}.")
     ev_b = base + bonus * q
     tr.derive("ev_b", ["q"], f"E[B] = {money(base)} + {money(bonus)} x {f2(q)} = {money(round(float(ev_b), 2))}.")
-    three = f.get("three", rng.random() < 0.5)
+    three = f.get("three", rng.random() < 0.7)
     if three:
         share = Fraction(rng.choice([10, 12, 15, 20]), 100)
         rev_lo, rev_hi = sorted(rng.sample([8000, 10000, 12000, 15000, 18000, 20000, 25000], 2))
@@ -395,7 +395,7 @@ def supplier_mix(rng: random.Random, names: Names, facts: dict | None = None) ->
     f = facts or {}
     tr = Trace()
     org = f.get("org", names.org(rng.choice(["Manufacturing", "Components", "Industries"])))
-    k = f.get("k", rng.choice([2, 3, 3]))
+    k = f.get("k", rng.choice([3, 3, 3, 2]))
     sups = f.get("sups", [names.org(rng.choice(["Components", "Textiles", "Foods", "Engineering"])) for _ in range(k)])
     while len(set(sups)) < k:
         sups = [names.org(rng.choice(["Components", "Textiles", "Foods", "Engineering"])) for _ in range(k)]
@@ -419,7 +419,7 @@ def supplier_mix(rng: random.Random, names: Names, facts: dict | None = None) ->
     tr.derive("posterior", ["total"], "P(supplier | defective): " + ", ".join(f"{s} {f2(p)}" for s, p in zip(sups, posts)) + ".")
     i_rate = max(range(k), key=lambda i: rates[i])
     i_share = max(range(k), key=lambda i: shares[i])
-    if "_retry" not in f and i_rate == i_best and i_share == i_best and rng.random() < 0.85:
+    if "_retry" not in f and i_rate == i_best and i_share == i_best and rng.random() < 0.97:
         return None  # both shortcuts agree with the truth: not informative
     kinds = [kk for kk, ii in (("highest_rate", i_rate), ("largest_share", i_share)) if ii != i_best] or ["highest_rate", "largest_share"]
     kind = f.get("kind", rng.choice(kinds))
@@ -443,12 +443,12 @@ def supplier_mix(rng: random.Random, names: Names, facts: dict | None = None) ->
     sig = f"{shares}|{rates}|{k}"
     r = f.get("r", rng.random())
     labels = [f"supplier_{'abc'[i]}" for i in range(k)]
-    if r < 0.4:
+    if r < 0.3:
         crit = {l: f"The defective unit most likely came from {s}." for l, s in zip(labels, sups)}
         return SynthItem(family="probability", scenario="supplier_mix", state=state, qtype="choice",
                          instructions="Which supplier most likely produced the defective unit?", criteria=crit, expected=labels[i_best],
                          trace=tr, signature=sig, distractor=kind, surface_answer=labels[i_wrong])
-    if r < 0.7:
+    if r < 0.55:
         i_q = rng.randrange(k)
         return noul_event(state, f"Was the defective unit supplied by {sups[i_q]}? Answer with probabilities that follow from the facts above.",
                           f"The defective unit came from {sups[i_q]}.", f"The defective unit came from another supplier.",
@@ -464,10 +464,10 @@ def draw_outcomes(rng: random.Random, names: Names, facts: dict | None = None) -
     f = facts or {}
     tr = Trace()
     org = f.get("org", names.org(rng.choice(["Foods", "Logistics", "Services"])))
-    n_red, n_blue = rng.randint(2, 9), rng.randint(2, 9)
+    n_red, n_blue = f.get("n_red", rng.randint(2, 15)), f.get("n_blue", rng.randint(2, 15))
     N = n_red + n_blue
     thing = f.get("thing", rng.choice(["tokens", "sample vials", "sealed envelopes", "keys", "pallets tags"]))
-    cA, cB = rng.choice([("red", "blue"), ("marked", "unmarked"), ("priority", "standard"), ("sealed", "open")])
+    cA, cB = rng.choice([("red", "blue"), ("marked", "unmarked"), ("priority", "standard"), ("sealed", "open"), ("green", "yellow"), ("numbered", "blank")])
     tr.given("bag", f"{n_red} {cA} and {n_blue} {cB} {thing}; two drawn without replacement.")
     p_aa = Fraction(n_red, N) * Fraction(n_red - 1, N - 1)
     p_bb = Fraction(n_blue, N) * Fraction(n_blue - 1, N - 1)
@@ -513,14 +513,19 @@ def draw_outcomes(rng: random.Random, names: Names, facts: dict | None = None) -
 
 
 SCENARIOS = [acceptance_sampling, screening_posterior, redundancy, ev_choice, supplier_mix, draw_outcomes]
-WEIGHTS = [0.22, 0.2, 0.15, 0.15, 0.16, 0.12]
+WEIGHTS = [0.22, 0.26, 0.18, 0.14, 0.14, 0.06]
 
 
 def make_item(rng: random.Random, names: Names, facts: dict | None = None) -> SynthItem:
-    f = facts or {}
-    for _ in range(20):
-        fn = rng.choices(SCENARIOS, weights=WEIGHTS)[0]
-        item = fn(rng, names)
+    """Pick a scenario by weight, then redraw its parameters until it yields an item, so that scenarios with a high
+    rejection rate (the distractor must disagree with the truth) keep their intended share."""
+    fn = rng.choices(SCENARIOS, weights=WEIGHTS)[0]
+    for _ in range(60):
+        item = fn(rng, names, facts)
         if item is not None:
             return item
-    raise RuntimeError("no valid probability item after 20 draws")
+    for _ in range(20):  # fallback: any scenario
+        item = rng.choices(SCENARIOS, weights=WEIGHTS)[0](rng, names, facts)
+        if item is not None:
+            return item
+    raise RuntimeError("no valid probability item after 80 draws")
