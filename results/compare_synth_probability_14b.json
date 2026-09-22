@@ -1,0 +1,63 @@
+{
+  "dataset": "synth-probability-test",
+  "n": 500,
+  "baseline": "zero-shot",
+  "rows": [
+    {
+      "run": "zero-shot",
+      "accuracy": 0.482,
+      "ci95": 0.04379852329930771,
+      "delta": 0.0,
+      "delta_ci": [
+        0.0,
+        0.0
+      ],
+      "win": 0,
+      "lose": 0,
+      "mcnemar_p": 1.0,
+      "T": 1.0,
+      "selective": {
+        "0.5": {
+          "coverage": 0.982,
+          "accuracy": 0.4847250509164969
+        },
+        "0.7": {
+          "coverage": 0.872,
+          "accuracy": 0.48623853211009177
+        },
+        "0.9": {
+          "coverage": 0.69,
+          "accuracy": 0.5130434782608696
+        }
+      }
+    },
+    {
+      "run": "hardfam-lora",
+      "accuracy": 0.752,
+      "ci95": 0.03785348157303368,
+      "delta": 0.27,
+      "delta_ci": [
+        0.214,
+        0.33
+      ],
+      "win": 192,
+      "lose": 57,
+      "mcnemar_p": 2.8092285526462684e-18,
+      "T": 1.0,
+      "selective": {
+        "0.5": {
+          "coverage": 0.94,
+          "accuracy": 0.774468085106383
+        },
+        "0.7": {
+          "coverage": 0.692,
+          "accuracy": 0.869942196531792
+        },
+        "0.9": {
+          "coverage": 0.438,
+          "accuracy": 0.954337899543379
+        }
+      }
+    }
+  ]
+}

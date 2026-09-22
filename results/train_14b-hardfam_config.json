@@ -1,0 +1,32 @@
+{
+  "run_name": "14b-hardfam",
+  "head": "slot",
+  "lora_rank": 16,
+  "lora_alpha": 32,
+  "lora_targets": [
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj"
+  ],
+  "steps": 600,
+  "batch_size": 8,
+  "lr": 5e-05,
+  "head_lr": 0.0003,
+  "weight_decay": 0.0,
+  "warmup": 50,
+  "brier_weight": 0.0,
+  "max_len": 4096,
+  "seed": 0,
+  "log_every": 10,
+  "eval_every": 100,
+  "ckpt_every": 100,
+  "n_val": 256,
+  "pointer_rank": 256,
+  "slot_init_from_lm_head": true,
+  "shuffle_options": true,
+  "grad_accum": 4,
+  "grad_checkpointing": true,
+  "train_mix": "synth:long_policy=0.25,synth:temporal_numeric=0.25,synth:probability=0.2,mmlu=0.3",
+  "val_mix": "synth:long_policy:dev=96,synth:temporal_numeric:dev=96,synth:probability:dev=96,mmlu_val=64"
+}

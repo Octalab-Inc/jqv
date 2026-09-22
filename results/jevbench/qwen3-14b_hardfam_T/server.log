@@ -1,0 +1,124 @@
+INFO:     Started server process [61605]
+INFO:     Waiting for application startup.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/443 [00:00<?, ?it/s]Loading weights: 100%|██████████| 443/443 [00:00<00:00, 31050.23it/s]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8010 (Press CTRL+C to quit)
+INFO:     127.0.0.1:49450 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49451 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49452 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49456 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49457 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49458 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49459 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49460 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49462 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49465 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49466 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49467 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49468 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49469 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49470 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49471 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49472 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49473 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49474 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49475 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49476 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49478 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49479 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49480 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49481 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49482 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49483 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49484 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49485 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49486 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49487 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49488 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49489 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49490 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49491 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49492 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49493 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49494 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49495 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49496 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49497 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49498 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49499 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49503 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49506 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49509 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49510 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49511 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49513 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49514 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49515 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49516 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49517 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49518 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49519 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49520 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49523 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49524 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49525 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49526 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49527 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49528 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49529 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49530 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49531 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49532 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49533 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49534 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49535 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49536 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49537 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49538 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49539 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49540 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49541 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49542 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49543 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49544 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49545 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49546 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49547 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49548 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49549 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49550 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49551 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49552 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49553 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49554 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49555 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49556 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49557 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49558 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49559 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49560 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49561 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49562 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49563 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49564 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49565 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49568 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49569 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49571 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49572 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49573 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49574 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49575 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49576 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49577 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49578 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49579 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49581 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49582 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [61605]
+/Users/h.imura/.local/share/uv/python/cpython-3.12.11-macos-aarch64-none/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

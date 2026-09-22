@@ -1,0 +1,891 @@
+{
+  "summary": {
+    "plain": 9,
+    "spelled": 8,
+    "positions": 11,
+    "decomposed": 12,
+    "n": 15,
+    "model": "Qwen/Qwen3-32B",
+    "engine": "packed",
+    "chat_thinking_off": 5,
+    "chat_thinking_on": 5,
+    "chat_words": 5
+  },
+  "rows": [
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "strawberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": 3,
+      "p": [
+        0.0,
+        0.001,
+        0.363,
+        0.598,
+        0.038,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "mississippi",
+      "letter": "s",
+      "truth": 4,
+      "pred": 4,
+      "p": [
+        0.0,
+        0.0,
+        0.026,
+        0.09,
+        0.855,
+        0.029
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "banana",
+      "letter": "a",
+      "truth": 3,
+      "pred": 3,
+      "p": [
+        0.0,
+        0.001,
+        0.014,
+        0.984,
+        0.001,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "raspberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.002,
+        0.85,
+        0.148,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "committee",
+      "letter": "t",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.003,
+        0.549,
+        0.427,
+        0.021,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "bookkeeper",
+      "letter": "e",
+      "truth": 3,
+      "pred": 3,
+      "p": [
+        0.0,
+        0.0,
+        0.012,
+        0.87,
+        0.118,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "hello",
+      "letter": "l",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.148,
+        0.852,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "necessary",
+      "letter": "s",
+      "truth": 1,
+      "pred": 2,
+      "p": [
+        0.001,
+        0.433,
+        0.555,
+        0.01,
+        0.001,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "occurrence",
+      "letter": "c",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.024,
+        0.792,
+        0.177,
+        0.007,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "balloon",
+      "letter": "o",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.007,
+        0.982,
+        0.011,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "parallel",
+      "letter": "l",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.003,
+        0.495,
+        0.495,
+        0.007,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "assessment",
+      "letter": "s",
+      "truth": 4,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.008,
+        0.663,
+        0.313,
+        0.016,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "kayak",
+      "letter": "k",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.06,
+        0.94,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "tennessee",
+      "letter": "e",
+      "truth": 4,
+      "pred": 4,
+      "p": [
+        0.0,
+        0.001,
+        0.016,
+        0.313,
+        0.664,
+        0.007
+      ]
+    },
+    {
+      "mode": "direct: plain question, empty state",
+      "word": "cinnamon",
+      "letter": "n",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.013,
+        0.893,
+        0.094,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "strawberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.986,
+        0.014,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "mississippi",
+      "letter": "s",
+      "truth": 4,
+      "pred": 4,
+      "p": [
+        0.0,
+        0.0,
+        0.001,
+        0.023,
+        0.975,
+        0.001
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "banana",
+      "letter": "a",
+      "truth": 3,
+      "pred": 3,
+      "p": [
+        0.0,
+        0.0,
+        0.223,
+        0.777,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "raspberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.996,
+        0.004,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "committee",
+      "letter": "t",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.999,
+        0.001,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "bookkeeper",
+      "letter": "e",
+      "truth": 3,
+      "pred": 3,
+      "p": [
+        0.0,
+        0.0,
+        0.004,
+        0.992,
+        0.004,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "hello",
+      "letter": "l",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "necessary",
+      "letter": "s",
+      "truth": 1,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.037,
+        0.962,
+        0.001,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "occurrence",
+      "letter": "c",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "balloon",
+      "letter": "o",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "parallel",
+      "letter": "l",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.999,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "assessment",
+      "letter": "s",
+      "truth": 4,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.731,
+        0.269,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "kayak",
+      "letter": "k",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "tennessee",
+      "letter": "e",
+      "truth": 4,
+      "pred": 4,
+      "p": [
+        0.0,
+        0.0,
+        0.0,
+        0.003,
+        0.973,
+        0.023
+      ]
+    },
+    {
+      "mode": "direct: state spells the word letter by letter",
+      "word": "cinnamon",
+      "letter": "n",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.999,
+        0.001,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "strawberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.999,
+        0.001,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "mississippi",
+      "letter": "s",
+      "truth": 4,
+      "pred": 4,
+      "p": [
+        0.0,
+        0.0,
+        0.004,
+        0.004,
+        0.989,
+        0.003
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "banana",
+      "letter": "a",
+      "truth": 3,
+      "pred": 3,
+      "p": [
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "raspberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.777,
+        0.223,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "committee",
+      "letter": "t",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.997,
+        0.003,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "bookkeeper",
+      "letter": "e",
+      "truth": 3,
+      "pred": 3,
+      "p": [
+        0.0,
+        0.0,
+        0.0,
+        0.994,
+        0.006,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "hello",
+      "letter": "l",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "necessary",
+      "letter": "s",
+      "truth": 1,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "occurrence",
+      "letter": "c",
+      "truth": 3,
+      "pred": 3,
+      "p": [
+        0.0,
+        0.0,
+        0.003,
+        0.997,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "balloon",
+      "letter": "o",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "parallel",
+      "letter": "l",
+      "truth": 3,
+      "pred": 3,
+      "p": [
+        0.0,
+        0.0,
+        0.003,
+        0.996,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "assessment",
+      "letter": "s",
+      "truth": 4,
+      "pred": 4,
+      "p": [
+        0.0,
+        0.0,
+        0.001,
+        0.001,
+        0.996,
+        0.002
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "kayak",
+      "letter": "k",
+      "truth": 2,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "tennessee",
+      "letter": "e",
+      "truth": 4,
+      "pred": 4,
+      "p": [
+        0.0,
+        0.0,
+        0.0,
+        0.001,
+        0.978,
+        0.02
+      ]
+    },
+    {
+      "mode": "direct: state spells letters with positions",
+      "word": "cinnamon",
+      "letter": "n",
+      "truth": 3,
+      "pred": 2,
+      "p": [
+        0.0,
+        0.0,
+        0.982,
+        0.018,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "strawberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": 3,
+      "positions": "..Y....YY."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "mississippi",
+      "letter": "s",
+      "truth": 4,
+      "pred": 4,
+      "positions": "..YY.YY...."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "banana",
+      "letter": "a",
+      "truth": 3,
+      "pred": 3,
+      "positions": ".Y.Y.Y"
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "raspberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": 3,
+      "positions": "Y.....YY."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "committee",
+      "letter": "t",
+      "truth": 2,
+      "pred": 2,
+      "positions": ".....YY.."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "bookkeeper",
+      "letter": "e",
+      "truth": 3,
+      "pred": 4,
+      "positions": ".....YYYY."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "hello",
+      "letter": "l",
+      "truth": 2,
+      "pred": 2,
+      "positions": "..YY."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "necessary",
+      "letter": "s",
+      "truth": 1,
+      "pred": 2,
+      "positions": "....YY..."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "occurrence",
+      "letter": "c",
+      "truth": 3,
+      "pred": 3,
+      "positions": ".YY.....Y."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "balloon",
+      "letter": "o",
+      "truth": 2,
+      "pred": 2,
+      "positions": "....YY."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "parallel",
+      "letter": "l",
+      "truth": 3,
+      "pred": 4,
+      "positions": "....YYYY"
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "assessment",
+      "letter": "s",
+      "truth": 4,
+      "pred": 4,
+      "positions": ".YY.YY...."
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "kayak",
+      "letter": "k",
+      "truth": 2,
+      "pred": 2,
+      "positions": "Y...Y"
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "tennessee",
+      "letter": "e",
+      "truth": 4,
+      "pred": 4,
+      "positions": ".Y..Y..YY"
+    },
+    {
+      "mode": "decomposed: one yes/no branch per position on a shared spelled state, counted outside",
+      "word": "cinnamon",
+      "letter": "n",
+      "truth": 3,
+      "pred": 3,
+      "positions": "..YY...Y"
+    },
+    {
+      "mode": "chat generation, thinking OFF",
+      "word": "strawberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": "3",
+      "tokens": 154
+    },
+    {
+      "mode": "chat generation, thinking OFF",
+      "word": "mississippi",
+      "letter": "s",
+      "truth": 4,
+      "pred": "4",
+      "tokens": 138
+    },
+    {
+      "mode": "chat generation, thinking OFF",
+      "word": "banana",
+      "letter": "a",
+      "truth": 3,
+      "pred": "3",
+      "tokens": 122
+    },
+    {
+      "mode": "chat generation, thinking OFF",
+      "word": "raspberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": "3",
+      "tokens": 137
+    },
+    {
+      "mode": "chat generation, thinking OFF",
+      "word": "committee",
+      "letter": "t",
+      "truth": 2,
+      "pred": "2",
+      "tokens": 173
+    },
+    {
+      "mode": "chat generation, thinking ON",
+      "word": "strawberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": "3",
+      "tokens": 574
+    },
+    {
+      "mode": "chat generation, thinking ON",
+      "word": "mississippi",
+      "letter": "s",
+      "truth": 4,
+      "pred": "4",
+      "tokens": 722
+    },
+    {
+      "mode": "chat generation, thinking ON",
+      "word": "banana",
+      "letter": "a",
+      "truth": 3,
+      "pred": "3",
+      "tokens": 463
+    },
+    {
+      "mode": "chat generation, thinking ON",
+      "word": "raspberry",
+      "letter": "r",
+      "truth": 3,
+      "pred": "3",
+      "tokens": 648
+    },
+    {
+      "mode": "chat generation, thinking ON",
+      "word": "committee",
+      "letter": "t",
+      "truth": 2,
+      "pred": "2",
+      "tokens": 537
+    }
+  ]
+}

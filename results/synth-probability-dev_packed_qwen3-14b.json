@@ -1,0 +1,24 @@
+{
+  "n": 300,
+  "accuracy": 0.44666666666666666,
+  "nll": 4.042273998260498,
+  "brier": 0.9805588722229004,
+  "ece": 0.4674364916483561,
+  "mean_confidence": 0.9140796065330505,
+  "engine": "packed",
+  "model": "Qwen/Qwen3-14B",
+  "dtype": "torch.bfloat16",
+  "dataset": "synth:probability:dev",
+  "seconds": 148.08179092407227,
+  "questions_per_sec": 2.0259074267532498,
+  "prompt_hash": "4f85a0b34776",
+  "n_val": 0,
+  "choice_counts": [
+    2,
+    3,
+    4
+  ],
+  "shots": 0,
+  "shots_mode": null,
+  "perm_avg": false
+}

@@ -826,6 +826,61 @@ difficulty by itself. Surface variation: Qwen3-14B rewrote one fact paragraph pe
 Tests: `tests/test_synth.py` (25 tests) checks the solvers on hand-computed cases through a `facts` override of every
 scenario, the trace bookkeeping, item invariants, split deduplication and the loader round trip.
 
+## Targeted LoRA on the weak families (14B gate, then 32B on GB10)
+
+The slot head + LoRA trained on MMLU alone did not move accuracy at 14B or 32B (section C, backbone scaling). The same head and LoRA were
+retrained on a mixture of the synthetic hard-family data (previous section; 2,000 training items per family) and MMLU, first at 14B as a gate,
+then at 32B with the identical recipe. Setup: slot head + LoRA r=16, CE only (λ=0), 600 steps × batch 8 (micro-batch 2 × 4 accumulation, gradient
+checkpointing), max_len 4096, `--train-mix synth:long_policy=0.25,synth:temporal_numeric=0.25,synth:probability=0.2,mmlu=0.3` (one source per batch,
+so 300-token MMLU items and 3k-token policies never share a batch), validation on 96 synthetic dev items per family + 64 MMLU val items every 100 steps.
+Evaluation: paired comparison (`scripts/compare_runs.py`, exact McNemar + bootstrap CI) on the synthetic test sets (500 per family) and MMLU / JMMLU test
+800 against the zero-shot vocabulary readout, plus JevBench public hard (111 decisions, served temperature). The 32B run was trained on a GB10
+(DGX Spark class, 121 GB unified memory, CUDA 13) instead of the Mac: 501 min for 600 steps (50 s/step, 1.75× the MPS speed), see `docs/gb10.md`.
+
+| Evaluation | 14B zero-shot | 14B targeted LoRA | Δ [95% CI] | 32B zero-shot | 32B targeted LoRA | Δ [95% CI] | McNemar p (32B) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| synth long_policy test (500) | 0.356 | **0.566** | +0.210 [+0.158, +0.266] | 0.380 | **0.596** | +0.216 [+0.164, +0.274] | <0.001 |
+| synth temporal_numeric test (500) | 0.272 | **0.694** | +0.422 [+0.364, +0.482] | 0.302 | **0.668** | +0.366 [+0.306, +0.428] | <0.001 |
+| synth probability test (500) | 0.482 | **0.752** | +0.270 [+0.214, +0.330] | 0.468 | **0.766** | +0.298 [+0.242, +0.352] | <0.001 |
+| MMLU test (800) | 0.750 | 0.760 | +0.010 [−0.007, +0.028] | 0.806 | 0.821 | +0.015 [+0.001, +0.030] | 0.058 |
+| JMMLU test (800) | - | - | - | 0.767 | 0.779 | +0.011 [−0.004, +0.028] | 0.20 |
+| JevBench public hard (111, served T) | 0.550 (61) | 0.604 (67) | +0.054 (16 won / 10 lost, p=0.33) | 0.613 (68) | 0.649 (72) | +0.036 (13 won / 9 lost) | 0.52 |
+
+The 32B zero-shot baselines were re-measured on the GB10 (`results/*_gb10*`); the Mac numbers (MMLU 0.809, JMMLU 0.771, JevBench 69/111) differ only by
+bf16 hardware noise: 110 of the 111 JevBench predictions are identical, and the one flip (`hard-opus-a-temporal_numeric-07`) is a near-tie between two
+dates (0.335 vs 0.321 on the Mac, 0.311 vs 0.338 on the GB10). Seven of the 111 items have a top-2 margin below 0.05, so ±1–2 items across hardware or
+dtype is expected.
+
+Calibration (raw probabilities, T=1, 32B): synthetic test ECE drops from 0.53 / 0.61 / 0.40 (zero-shot, mean confidence ≈ 0.9) to 0.075 / 0.062 / 0.053
+(long_policy / temporal_numeric / probability); MMLU raw ECE 0.139 → 0.093 and the fitted temperature 3.0 → 1.75 (the trained head internalises the
+temperature, as in section E); NLL after temperature improves on MMLU (0.535 → 0.506) and JMMLU (0.609 → 0.587). On JevBench hard the served ECE goes
+0.127 → 0.096, Brier 0.516 → 0.415, ordinal MAE 0.77 → 0.56, macro accuracy 0.673 → 0.713. Selective accuracy (32B, LoRA): probability answers 50 % of the
+items at 0.92 accuracy when p ≥ 0.9; temporal_numeric 59 % at 0.76 when p ≥ 0.7; long_policy 42 % at 0.78 when p ≥ 0.7.
+
+JevBench hard by family (correct / items, zero-shot → LoRA): at 32B long_policy 9 → 10 / 19, multi_hop 10 → 11 / 18, temporal_numeric 4 → **2** / 15,
+probability 4 → **8** / 10, ambiguous 5 → 6 / 7, trap 8 → 7 / 8, the rest unchanged; at 14B long_policy 5 → 8, temporal_numeric 5 → **3**, probability 5 → 6,
+tradeoff 1 → 3, ambiguous 4 → 5, trap 7 → 8. The three temporal items lost at 32B are an EUR amount computation, a 30-month cap expiry and a deadline
+yes/no: all require the numeric or date arithmetic that decides the choice. On the synthetic test the 6-hop long_policy items (paying within a sub-limit,
+n=30) get worse at both sizes (0.60 → 0.33 at 32B, 0.57 → 0.27 at 14B), while the rate of following the misleading note falls from 0.80 to 0.20 (3-hop items).
+
+What this shows:
+
+1. **Targeted LoRA is selective transfer, not a general lift of "hard" ability.** In-distribution gains are +22 to +42 points (p<0.001), but on the same
+   111 JevBench items the paired result is 13 won / 9 lost (exact McNemar p=0.52) at 32B and 16 / 10 (p=0.33) at 14B. The stronger claim today is that the
+   decision distribution improves (ECE, Brier and ordinal MAE all move the same way), not that accuracy does.
+2. **Transfer is heterogeneous by family, with the same pattern at 14B and 32B.** Probability transfers positively (4 → 8 / 10, n=10, so an independent
+   test set is needed). Long-policy training succeeds in-distribution (+21.6 points) but transfers weakly (+1 item). Temporal-numeric training shows a
+   reproducible negative transfer (5 → 3 and 4 → 2). Multi-hop, judge, adversarial and routing items are unaffected, so nothing was broken globally.
+3. **The temporal generator has to be redesigned, not enlarged.** The lost items need contract period + cap period, amount + currency + threshold,
+   effective date + expiry conditions, before/after deadline booleans and AND/OR over several numeric conditions, i.e. the computation that decides the
+   choice; the current generator centres on month-end rules, business days, DST and unit conversion (`tasks/active/temporal-generator-v2.md`).
+4. **MMLU / JMMLU do not regress** with a 30 % replay; the mixed run even beats the MMLU-only 32B head (0.821 vs 0.801).
+
+Conclusion: targeted LoRA improves in-distribution hard-family performance and probability quality, but transfer to JevBench is heterogeneous.
+Probability reasoning transfers positively, long-policy transfer is limited, and temporal-numeric training shows reproducible negative transfer across
+14B and 32B. Generic targeted fine-tuning is therefore insufficient; the next iteration redesigns the temporal-numeric generator around the computation
+patterns observed in the held-out-style errors rather than simply increasing data volume.
+
 ## Related projects
 
 Several public implementations arrived independently at the same hypotheses in 2026 (read the option-token logits directly
