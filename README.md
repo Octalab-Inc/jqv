@@ -62,6 +62,10 @@ Findings, in one line each (details in the report):
 4. A scalar temperature reaches Jev's reported ECE in and near the fitting distribution (MMLU 0.023), transfers across
    languages (MMLU ↔ JMMLU), transfers partially to JevBench hard and is harmful on a reading-type task.
 5. Option-order averaging (`perm_avg`) is a training-free +3 points at 1.7B/14B and cancels the position and letter priors.
+6. Targeted LoRA on program-verified synthetic data for the weak JevBench families is selective transfer, not a general lift:
+   +22 to +42 points in-distribution at 14B/32B, but JevBench hard moves 68 → 72 / 111 at 32B (13 won / 9 lost, p=0.52) with
+   better calibration (ECE 0.127 → 0.096, Brier 0.516 → 0.415); probability transfers, long-policy barely, and temporal-numeric
+   training hurts reproducibly (5 → 3 / 15 at 14B, 4 → 2 at 32B).
 
 ## Quick start
 

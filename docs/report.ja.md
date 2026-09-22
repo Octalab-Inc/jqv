@@ -763,6 +763,88 @@ hops 別の精度は LoRA で 0.62 / 0.67 / 0.67 / 0.74（2〜5 hop）と単調�
 
 次: 同じ recipe を 32B で学習し（micro 1 × 累積 8 でメモリを抑える）、synth test、MMLU 800、JMMLU 800、JevBench public hard を同じ手順で測る。
 
+## 32B の targeted LoRA（GB10、同じ recipe）と、転移の family 依存性
+
+14B の gate を通った recipe をそのまま 32B で学習した。学習は Mac（MPS、88 秒/step、600 step に 14 時間超）ではなく GB10（DGX Spark 級、
+NVIDIA GB10、CUDA 13.0、統合メモリ 121 GB、`docs/gb10.md`）2 台に移し、A で学習、B で同一環境の zero-shot 基準と学習後の synth 評価を回した。
+
+設定: slot head + LoRA r=16、λ=0、600 step × batch 8（micro 2 × 累積 4、gradient checkpointing。121 GB に収まり micro 1 は不要だった）、max_len 4096、
+`--train-mix` と `--val-mix` は 14B と同一。学習 501 分（平均 50 秒/step、検証込み。Mac の 1.75 倍速）、メモリ使用 87 GB。best は step 600（val NLL 0.638）。
+
+| step | val_acc | val NLL | long_policy | temporal_numeric | probability | MMLU val |
+|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.582 | 1.184 | 0.458 | 0.521 | 0.625 | 0.797 |
+| 200 | 0.636 | 0.856 | 0.583 | 0.479 | 0.750 | 0.781 |
+| 300 | 0.716 | 0.685 | 0.635 | 0.656 | 0.802 | 0.797 |
+| 400 | 0.730 | 0.677 | 0.594 | 0.760 | 0.771 | 0.828 |
+| 500 | 0.736 | 0.650 | 0.604 | 0.729 | 0.833 | 0.797 |
+| 600 | **0.747** | **0.638** | 0.646 | 0.760 | 0.812 | 0.781 |
+
+評価は 14B と同じ手順（synth test 各 500、MMLU / JMMLU test 800 の対応比較、JevBench public hard 111 の served-T 構成）。
+zero-shot の基準は GB10 で再測定した値（`results/*_gb10*`、`results/jevbench/qwen3-32b_packed_T_gb10/`）で、Mac の既存値（MMLU 0.809、JMMLU 0.771、JevBench 69/111）とは
+bf16 のハード差の範囲でしか違わない（後述）。
+
+| 評価（32B） | zero-shot | targeted LoRA | Δ [95% CI] | McNemar p |
+|---|---:|---:|---:|---:|
+| synth long_policy test（500） | 0.380 | **0.596** | +0.216 [+0.164, +0.274] | <0.001 |
+| synth temporal_numeric test（500） | 0.302 | **0.668** | +0.366 [+0.306, +0.428] | <0.001 |
+| synth probability test（500） | 0.468 | **0.766** | +0.298 [+0.242, +0.352] | <0.001 |
+| MMLU test（800） | 0.806 | 0.821 | +0.015 [+0.001, +0.030] | 0.058 |
+| JMMLU test（800） | 0.767 | 0.779 | +0.011 [−0.004, +0.028] | 0.20 |
+| JevBench public hard（111、served T） | 0.613（68/111） | 0.649（72/111） | +0.036（13 勝 9 敗） | 0.52（exact） |
+
+| 校正 | zero-shot ECE / 平均 confidence | LoRA ECE / 平均 confidence |
+|---|---:|---:|
+| synth long_policy test（T=1） | 0.532 / 0.91 | **0.075** / 0.66 |
+| synth temporal_numeric test（T=1） | 0.610 / 0.91 | **0.062** / 0.73 |
+| synth probability test（T=1） | 0.398 / 0.87 | **0.053** / 0.81 |
+| MMLU test（生 / +T、NLL+T） | 0.139 / 0.025、0.535（T=3.02） | 0.093 / 0.023、**0.506**（T=1.75） |
+| JMMLU test（生 / +T、NLL+T） | 0.154 / 0.035、0.609（T=2.59） | 0.112 / 0.040、**0.587**（T=1.70） |
+| JevBench hard（served T）ECE / Brier / ordinal MAE / macro acc | 0.127 / 0.516 / 0.766 / 0.673 | **0.096 / 0.415 / 0.557 / 0.713** |
+
+選択的精度（LoRA）: probability は p ≥ 0.9 で 50% を精度 0.92、temporal_numeric は p ≥ 0.7 で 59% を 0.76、long_policy は p ≥ 0.7 で 42% を 0.78。
+MMLU（+T）は p ≥ 0.9 で 50% を 0.98（zero-shot は 43% を 0.97）。
+
+JevBench hard の family 別（正解 / 問題数、zero-shot → LoRA）: long_policy 9 → 10 / 19、multi_hop 10 → 11 / 18、temporal_numeric 4 → **2** / 15、
+probability 4 → **8** / 10、ambiguous 5 → 6 / 7、trap 8 → 7 / 8、tradeoff 3 / 6、judge_hard 14 / 17、adversarial 6 / 6、routing_hard 5 / 5 は不変。
+111 問中 22 問が入れ替わり（13 問獲得、9 問喪失）。temporal_numeric で落とした 3 問は EUR の金額計算（498.81 → 513.69 を選択）、30 か月上限の失効判定
+（expired → covered）、期限の yes/no で、いずれも「選択肢を決めるまでの数値・日付計算」を要する問題。
+
+synth test の scenario 別（LoRA、正解率。括弧は 14B）: long_policy は equipment_breakdown 0.73（0.66）、home_water 0.65（0.61）、sla_credits 0.61（0.58）、
+relocation 0.51（0.52）、trip_cancellation 0.45（0.45）。temporal_numeric は service_months 0.82（0.88）、business_day 0.74（0.71）、warranty 0.66（0.69）、
+unit_threshold 0.64（0.73）、dst_cutoff 0.55（0.50。誤誘導メモに従う割合 0.70）、prorated_invoice 0.51（0.56）。probability は supplier_mix 0.88（0.93）、
+screening 0.83（0.84）、draw_outcomes 0.80（0.88）、acceptance 0.72（0.73）、ev_choice 0.69（0.54）、redundancy 0.64（0.61）。
+hops 別（3 family 合算）は zero-shot 0.26 / 0.41 / 0.54 / 0.58（3〜6 hop）→ LoRA 0.68 / 0.66 / 0.77 / **0.36**。long_policy の 6-hop（サブリミット内で支払う決定、n=30）は
+0.60 → 0.33 で、14B の 0.57 → 0.27 と同じ悪化が再現した。誤誘導メモに従う割合は 3-hop 全体で 0.80 → 0.20。
+
+**Mac と GB10 の zero-shot が 1 問だけ違う理由**: 111 問中 110 問は予測が一致し、`hard-opus-a-temporal_numeric-07` だけが Mac で sep_26（0.335、次点 sep_24 0.321）、
+GB10 で sep_24（0.338、次点 sep_26 0.311）と反転した。served T=3.02 で上位 2 択がほぼ同率の問題で、bf16 の演算順序の差が argmax を変えた例。
+GB10 の zero-shot では上位 2 択の差が 0.05 未満の問題が 111 問中 7 問あるので、ハードや dtype をまたぐと ±1〜2 問は動く。
+Benchmark Heaven の H100 再現（public hard 62.2% = 69/111）は Mac と一致している。
+
+読み取れること:
+
+1. **targeted LoRA は「hard 能力を全般に上げる」のではなく、学習した問題族への転移が選択的に起きる。** in-distribution（synth test）では 3 family とも
+   +22〜37 pt（p<0.001）だが、JevBench public hard は 68 → 72 問で、同じ 111 問での対応比較は 13 勝 9 敗（exact McNemar p=0.52）と、精度の主張としてはまだ弱い。
+   一方 ECE 0.127 → 0.096、Brier 0.516 → 0.415、ordinal MAE 0.77 → 0.56 は同方向に改善しており、現時点で強く言えるのは
+   「精度」より **decision distribution そのものが改善した** こと。
+2. **family 別の転移は不均一で、14B と 32B で型が一致する。** probability は 4 → 8 / 10 と最も伸びる（n=10 なので独立 test を増やす必要がある）。
+   long_policy は synth で +21.6 pt なのに JevBench では +1 問（in-distribution 学習は成功、外部転移は弱い）。temporal_numeric は 14B 5 → 3、32B 4 → 2 で、
+   偶然ではなく **系統的な負の転移** と見るべき。multi_hop / judge_hard / adversarial / routing_hard は維持され、副作用で全体を壊してはいない。
+3. **temporal_numeric は合成データを増やすのではなく問題型を作り直す。** 落とした問題（金額計算、期間上限、期限前後の判定）は、現在の生成器（月末規則、
+   DST、営業日、日割り、単位換算）と能力軸がずれている。契約期間 + 上限期間、金額 + 通貨 + 閾値、発効日 + 失効条件、期限前後の真偽、複数数値条件の AND/OR を、
+   「choice を決めるまでの数値計算そのもの」として教師データにする（`tasks/active/temporal-generator-v2.md`）。
+4. **MMLU / JMMLU は退行せず、温度後の NLL も改善**（0.535 → 0.506、0.609 → 0.587）。MMLU 単独学習の 32B slot + LoRA（0.801、−0.7）より良く、
+   30% の replay と長い state の混合が MMLU にも僅かに効いている。生の温度は 3.0 → 1.75 に下がり、学習が温度を内蔵する性質は 32B でも同じ。
+5. **GB10 での実測**: 32B の学習 501 分、slot 評価は MMLU 1200 問 16 分（Mac 24 分）、long_policy 500 問 31 分、temporal / probability 5〜6 分、JevBench hard 111 問 10 分。
+   packed の zero-shot 評価と比べ、head engine は state を共有せず質問ごとに全文を再エンコードするため MMLU のような短い state では 4.4 倍遅く、長い state では逆に速い。
+
+結論（タスクを閉じるにあたって）: **Targeted LoRA improves in-distribution hard-family performance and probability quality, but transfer to JevBench is
+heterogeneous. Probability reasoning transfers positively, long-policy transfer is limited, and temporal-numeric training shows reproducible negative
+transfer across 14B and 32B. Generic targeted fine-tuning is therefore insufficient; the next iteration should redesign the temporal-numeric generator
+around the actual computation patterns observed in held-out-style errors rather than simply increasing data volume.**
+次の一手は temporal generator v2（RLCD より先に「何を計算させるべきか」の分布を合わせる）。
+
 ## サンプル: jqgrep（jqv による cascade 型 semantic code search、`jqgrep/`）
 
 jqv を「1 つの長い state に多数の decision を掛けるアプリ」として使う例。index も埋め込みも持たず、毎回 live のファイルツリーを見る。

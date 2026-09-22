@@ -1,6 +1,6 @@
 ---
 title: 合成データによる targeted LoRA で弱い family の精度を上げる（14B で判定し、効けば 32B）
-status: pending
+status: done
 priority: P1
 created_at: 2026-09-21T10:11:14+09:00
 depends_on:
@@ -69,3 +69,24 @@ uv run python scripts/jevbench_families.py
 
 - 混合比（synth 70% / MMLU 30%）と step 数（600 か 1,000 か）。既定は上記。
 - gate の閾値 +10 pt でよいか（synth test n=500 なら ±4 pt の CI）。
+
+# Result
+
+- Changed: `jqv/train/data.py`（JSONL ソース `synth:<family>:<split>`、`--train-mix` / `--val-mix` の重み付き混合、`MixSampler`）、`jqv/train/trainer.py`
+  （ソース別 val、sampler cursor の保存と再開）、`scripts/train_head.py`、`scripts/synth_difficulty.py`、`scripts/jevbench_families.py`、`docs/report.ja.md`
+  （14B gate 節、32B 節）、`docs/gb10.md`。結果: `results/train_14b-hardfam_log.jsonl`、`results/train_32b-hardfam-gb10_log.jsonl`、`results/compare_synth_*`、
+  `results/compare_mmlu_32b_hardfam.json`、`results/compare_jmmlu_32b_hardfam.json`、`results/jevbench/qwen3-14b_hardfam_T`、`results/jevbench/qwen3-32b_hardfam_T`、
+  `results/jevbench/qwen3-32b_packed_T_gb10`、`results/jevbench_families_32b_hardfam.json`、`results/synth_difficulty_32b_hardfam.md`。
+  checkpoint は `results/train/{14b-hardfam,32b-hardfam-gb10}/best`（git 外、Mac に回収済み）。
+- Verified: 14B gate 通過（synth test 3 family +21 / +42 / +27 pt、p<0.001、MMLU +1.0）。32B（GB10、学習 501 分）: synth test +21.6 / +36.6 / +29.8 pt（p<0.001）、
+  MMLU 0.806 → 0.821（p=0.058）、JMMLU 0.767 → 0.779（p=0.20）、JevBench public hard 68 → 72 / 111（13 勝 9 敗、exact McNemar p=0.52）、
+  served ECE 0.127 → 0.096、Brier 0.516 → 0.415、ordinal MAE 0.77 → 0.56。family 別: probability 4 → 8 / 10、long_policy 9 → 10 / 19、temporal_numeric 4 → 2 / 15。
+- Deviations: 評価表は `results/hardfam_<model>.md` ではなく `docs/report.ja.md` の節と `results/compare_*.json` に置いた（レポートは docs/report.ja.md に集約する指示）。
+  32B は Mac ではなく GB10 で学習した（`gb10-training-infra`。micro 2 × 累積 4 で 121 GB に収まった）。zero-shot 基準は GB10 で再測定した `*_gb10` を使い、
+  Mac の既存値は参考（JevBench は 1 問だけ argmax が反転する、上位 2 択がほぼ同率の問題）。JevBench hard の family 別は CI ではなく exact McNemar と勝敗数で報告した。
+- Remaining: temporal_numeric の JevBench での負の転移（14B 5 → 3、32B 4 → 2）は `temporal-generator-v2` へ。probability は JevBench n=10 なので独立 test を増やす。
+  long_policy の 6-hop（サブリミット）は 2 サイズとも悪化（0.60 → 0.33、0.57 → 0.27）。
+- Conclusion: Targeted LoRA improves in-distribution hard-family performance and probability quality, but transfer to JevBench is heterogeneous.
+  Probability reasoning transfers positively, long-policy transfer is limited, and temporal-numeric training shows reproducible negative transfer across
+  14B and 32B. Generic targeted fine-tuning is therefore insufficient; the next iteration should redesign the temporal-numeric generator around the actual
+  computation patterns observed in held-out-style errors rather than simply increasing data volume.

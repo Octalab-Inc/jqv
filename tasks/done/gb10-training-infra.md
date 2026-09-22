@@ -1,6 +1,6 @@
 ---
 title: GB10（DGX Spark）2 台で jqv の学習・評価を回せるようにする（鍵認証、環境構築、runbook）
-status: pending
+status: done
 priority: P1
 created_at: 2026-09-22T12:23:12+09:00
 depends_on: []
@@ -55,3 +55,16 @@ ssh gb10a 'tmux capture-pane -pt train32 | tail -3'
 # Open Questions
 
 - なし。
+
+# Result
+
+- Changed: `~/.ssh/config`（`gb10a` / `gb10b`、専用鍵 `~/.ssh/id_ed25519_gb10`、両機に登録）、`.gitignore`（`.env`）、`docs/gb10.md`（runbook）。
+  ホスト側: uv 管理 Python の venv `~/jqv/.venv-managed`、`~/jqv`（task ブランチ）、`~/jevbench`（7ce310c）、Qwen3 1.7B / 14B / 32B（A で取得、直結リンクで B へ）、
+  synth train の再生成、launch / eval スクリプト（`~/launch_a.sh`、`~/launch_b.sh`、`~/eval_a.sh`、`~/eval_b.sh`）。コード変更はなし。
+- Verified: 鍵認証で両機に接続。torch 2.14.0+cu130（PyPI の aarch64 wheel）で CUDA が動き、engine 等価性 / isolation テストが CUDA で通過（1.7B）。
+  32B smoke（4 step、micro 2）は 20 秒/step、本番 600 step は平均 50 秒/step（検証込み、501 分。Mac の 88 秒/step の 1.75 倍速）、メモリ使用 87 GB。
+  A で 32B 学習、B で 32B zero-shot 基準（synth test 3 family、MMLU、JMMLU、JevBench hard）が取れ、学習後の評価チェーンも両機で完走した。
+- Deviations: 14B smoke の代わりに 32B smoke で step 時間とメモリを測った（本番と同じ recipe）。DDP は計画どおり未実装。
+  `scripts/jevbench_run.py` はハーネスの場所を `JEVBENCH_DIR` で受けるので、GB10 では環境変数が必須（runbook に追記）。
+- Remaining: vLLM コンテナ（`deepseek-v4-flash-vllm-dspark-1`）は両機で停止したまま。再開は所有者判断（`docker start ...`）。
+  評価チェーンは eval.py の進捗行を grep で捨てていたため 1 問単位の進捗が見えなかった。次回は raw ログを別ファイルに tee する。
