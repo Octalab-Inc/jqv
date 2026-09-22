@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from jqv.synth import policy, probability, temporal
+from jqv.synth import policy, probability, temporal, temporal_v2
 from jqv.synth.common import Names, SplitWriter, Trace
 from jqv.synth.generate import generate_family
 
@@ -253,7 +253,7 @@ def test_sla_rule_engine():
 # ----------------------------------------------------------------------------- invariants and loader
 
 
-@pytest.mark.parametrize("mod", [temporal, probability, policy])
+@pytest.mark.parametrize("mod", [temporal, probability, policy, temporal_v2])
 def test_generated_items_are_valid(mod):
     rng, names = _rng(99)
     hops = []
@@ -284,6 +284,120 @@ def test_generate_and_load_round_trip(tmp_path):
         assert it["choices"][it["answer"]].split(":")[0] == it["labels"][it["answer"]]
         assert "dependency_hops" in it["meta"] and it["qtype"] in ("choice", "noul")
     assert (tmp_path / "probability" / "summary.json").exists()
+
+
+# ----------------------------------------------------------------------------- temporal_v2 solvers (hand-computed cases)
+
+
+def test_v2_term_vs_cap_classification():
+    from decimal import Decimal  # noqa: F401
+    base = {"made": date(2024, 9, 2), "n_term": 24, "cap_months": 30, "delivery": date(2024, 12, 10), "has_repair": True,
+            "r_in": date(2025, 6, 1), "r_out": date(2025, 6, 10), "code_style": False, "shift_date": False, "variant": 0.1, "_retry": 0,
+            "desk_city": ("Oslo", "Europe/Oslo"), "cust_city": ("Osaka", "Asia/Tokyo")}
+    # term: 10 Dec 2026 + 10 repair days (1-10 June inclusive) = 20 Dec 2026; cap: 30 months from 2 Sep 2024 = 2 Mar 2027
+    rng, names = _rng(1)
+    it = temporal_v2.term_vs_cap(rng, names, {**base, "claim": date(2026, 12, 15)})
+    assert it.expected == "covered" and it.scenario == "term_vs_cap"
+    rng, names = _rng(1)
+    it = temporal_v2.term_vs_cap(rng, names, {**base, "claim": date(2026, 12, 25)})
+    assert it.expected == "expired_term"
+    # cap binds: 27 months from 1 Jan 2024 = 1 Apr 2026 < term 1 June 2026 (no repair); claim 1 May 2026
+    rng, names = _rng(2)
+    it = temporal_v2.term_vs_cap(rng, names, {**base, "made": date(2024, 1, 1), "cap_months": 27, "delivery": date(2024, 6, 1),
+                                               "has_repair": False, "claim": date(2026, 5, 1)})
+    assert it.expected == "expired_cap"
+    rng, names = _rng(3)
+    it = temporal_v2.term_vs_cap(rng, names, {**base, "claim": date(2026, 12, 15), "variant": 0.9})
+    assert it.qtype == "choice" and it.expected == "2026_12_20"
+
+
+def test_v2_fx_lines_cap_amount():
+    from decimal import Decimal
+
+    rates = {date(2026, 10, 7): Decimal("165.20"), date(2026, 10, 8): Decimal("164.10"), date(2026, 10, 9): Decimal("163.50"),
+             date(2026, 10, 12): Decimal("160.30"), date(2026, 10, 13): Decimal("161.00")}
+    f = {"home": "EUR", "cur": ("JPY", Decimal("162"), Decimal("0"), 0), "check_in": date(2026, 10, 8), "nights": 3, "rates": rates, "tx_rule": "checkout",
+         "cap": Decimal(170), "room_lines": [(date(2026, 10, 8), Decimal(26000)), (date(2026, 10, 9), Decimal(29500)), (date(2026, 10, 10), Decimal(24000))],
+         "tax_fx": Decimal(300), "excluded": [("Minibar", Decimal(1800))], "variant": 0.1, "_retry": 0}
+    rng, names = _rng(4)
+    it = temporal_v2.fx_lines_cap(rng, names, f)
+    # check-out Sunday 11 Oct -> Friday's 163.50; 159.02 + min(180.43, 170) + 146.79 + 3 x 1.83 = 481.30
+    assert it.expected == "eur_481_30" and it.qtype == "choice" and "eur_481_30" in it.criteria
+    rng, names = _rng(4)
+    it = temporal_v2.fx_lines_cap(rng, names, {**f, "variant": 0.6, "thr_lo": Decimal(400), "thr_hi": Decimal(500)})
+    assert it.expected == "manager"
+
+
+def test_v2_effective_expiry_earliest_condition():
+    f = {"eff": date(2026, 3, 15), "k_months": 24, "has_transfer": True, "transfer": date(2027, 1, 10), "grace": 30, "has_notice": True,
+         "notice_date": date(2026, 12, 1), "received": date(2026, 12, 3), "notice_period": 90, "has_fee": True, "paid": None,
+         "query": date(2027, 2, 20), "variant": 0.1, "_retry": 0}
+    rng, names = _rng(5)
+    it = temporal_v2.effective_expiry(rng, names, f)  # transfer + 30 = 9 Feb 2027 < notice 3 Mar 2027 < fee 15 Mar 2027 < fixed 15 Mar 2028
+    assert it.expected == "transfer_event"
+    rng, names = _rng(5)
+    it = temporal_v2.effective_expiry(rng, names, {**f, "variant": 0.5})
+    assert it.expected == "2027_02_09"
+    rng, names = _rng(5)
+    it = temporal_v2.effective_expiry(rng, names, {**f, "variant": 0.9})
+    assert it.qtype == "noul" and it.expected == "no"
+    rng, names = _rng(6)
+    it = temporal_v2.effective_expiry(rng, names, {**f, "has_transfer": False, "variant": 0.1})  # notice from receipt: 3 Dec + 90 = 3 Mar 2027
+    assert it.expected == "termination_notice"
+
+
+def test_v2_deadline_boolean_counting_roll_and_zone():
+    f = {"event": date(2026, 3, 2), "n_days": 30, "count_event_day": False, "roll": True, "holidays": {date(2026, 4, 1)},
+         "office_city": ("Toronto", "America/Toronto"), "filer_city": ("Warsaw", "Europe/Warsaw"), "same_tz": False, "cutoff": time(17, 0),
+         "grace": 5, "variant": 0.5, "_retry": 0}
+    # day 30 = 1 April (Wed, closed) -> Thursday 2 April 2026, 17:00 Toronto (EDT) = 23:00 Warsaw (CEST)
+    rng, names = _rng(7)
+    it = temporal_v2.deadline_boolean(rng, names, {**f, "delta_min": -30})
+    assert it.expected == "on_time" and "2 April 2026" in it.trace.rationale()
+    rng, names = _rng(7)
+    it = temporal_v2.deadline_boolean(rng, names, {**f, "delta_min": 60})
+    assert it.expected == "late_with_fee"
+    rng, names = _rng(7)
+    it = temporal_v2.deadline_boolean(rng, names, {**f, "delta_min": 8 * 24 * 60})
+    assert it.expected == "rejected"
+    rng, names = _rng(8)
+    it = temporal_v2.deadline_boolean(rng, names, {**f, "count_event_day": True, "roll": False, "delta_min": -30, "variant": 0.9})
+    assert it.expected == "2026_03_31"  # counting 2 March as day 1, day 30 is 31 March; no roll
+
+
+def test_v2_multi_condition_tiers():
+    from decimal import Decimal
+
+    quarters = [(date(2027, 6, 21), Decimal(5300)), (date(2027, 3, 22), Decimal(5900)), (date(2026, 12, 21), Decimal(3700)),
+                (date(2026, 9, 21), Decimal(5300)), (date(2026, 6, 22), Decimal(1500))]
+    payments = [(date(2027, 6, 5), date(2027, 6, 5)), (date(2027, 8, 3), date(2027, 8, 2)), (date(2026, 7, 3), date(2026, 7, 10))]  # the late one is outside the window
+    f = {"assess": date(2027, 9, 20), "opened": date(2025, 5, 20), "quarters": quarters, "payments": payments, "referrals": 3, "suspended": False,
+         "A": Decimal(20000), "B": 12, "C": 4, "structure": "and_with_or", "variant": 0.1, "_retry": 0}
+    rng, names = _rng(9)
+    it = temporal_v2.multi_condition(rng, names, f)  # spend in window 20,200 >= 20,000; tenure 28 >= 12; no late in window -> gold
+    assert it.expected == "gold"
+    rng, names = _rng(9)
+    it = temporal_v2.multi_condition(rng, names, {**f, "suspended": True})
+    assert it.expected == "standard"
+    rng, names = _rng(9)
+    it = temporal_v2.multi_condition(rng, names, {**f, "structure": "or_of_ands", "referrals": 5, "A": Decimal(25000)})  # (spend fails) OR (5 refs AND no late)
+    assert it.expected == "gold"
+    rng, names = _rng(9)
+    it = temporal_v2.multi_condition(rng, names, {**f, "variant": 0.9})
+    assert it.qtype == "score" and it.expected == "3"
+
+
+def test_v2_program_keys_are_split_disjoint(tmp_path):
+    import json
+
+    generate_family("temporal_v2", {"train": 15, "dev": 6, "test": 6}, 0, tmp_path, apply_paraphrase=False)
+    keys = {}
+    for split in ("train", "dev", "test"):
+        for line in (tmp_path / "temporal_v2" / f"{split}.jsonl").read_text().splitlines():
+            r = json.loads(line)
+            assert r["meta"]["program_key"] and r["meta"]["version"] == "v2"
+            keys.setdefault(split, set()).add(r["meta"]["program_key"])
+    assert not (keys["train"] & keys["test"]) and not (keys["train"] & keys["dev"]) and not (keys["dev"] & keys["test"])
 
 
 # ----------------------------------------------------------------------------- paraphrase helpers (no model)

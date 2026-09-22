@@ -8,4 +8,4 @@ attribute of every item rather than a separate family.
 
 from jqv.synth.common import Trace, SynthItem  # noqa: F401
 
-FAMILIES = ("long_policy", "temporal_numeric", "probability")
+FAMILIES = ("long_policy", "temporal_numeric", "probability", "temporal_v2")

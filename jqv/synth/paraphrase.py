@@ -30,7 +30,8 @@ PROMPT = ("Rewrite the following paragraph from a business record in different w
 
 FACT_PREFIXES = ("Claim ", "Item ", "Order ", "Lot ", "Employee", "Account ", "Case ", "Contract ", "Adjuster's narrative", "Engineer's report",
                  "Claim narrative", "Household:", "Distances ", "Supplier certificate", "A unit drawn", "The container holds", "Repair ",
-                 "Non-refundable", "Current term", "Policy EB", "Policy TR", "Policy HP")
+                 "Non-refundable", "Current term", "Policy EB", "Policy TR", "Policy HP",
+                 "File ", "Operating licence", "Site permit", "Vendor accreditation", "Software subscription", "Fleet policy")  # temporal_v2 fact paragraphs
 COMPARATORS = ("more than", "at least", "less than", "fewer than", "no later than", "not more than", "not later than", "on or after", "on or before",
                "before", "after", "within", "outside", "exceed", "at or above", "at or below", "above", "below", "until", "since",
                "not", "no ", "never", "without", "unless", "except", "only")

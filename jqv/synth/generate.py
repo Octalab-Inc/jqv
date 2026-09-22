@@ -17,7 +17,8 @@ from pathlib import Path
 from jqv.synth import FAMILIES
 from jqv.synth.common import Names, SplitWriter
 
-MODULES = {"temporal_numeric": "jqv.synth.temporal", "probability": "jqv.synth.probability", "long_policy": "jqv.synth.policy"}
+MODULES = {"temporal_numeric": "jqv.synth.temporal", "probability": "jqv.synth.probability", "long_policy": "jqv.synth.policy",
+           "temporal_v2": "jqv.synth.temporal_v2"}
 
 
 def generate_family(family: str, counts: dict[str, int], seed: int, out_dir: Path, max_tries_factor: int = 20,
@@ -61,7 +62,7 @@ def generate_family(family: str, counts: dict[str, int], seed: int, out_dir: Pat
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--family", default="all", help="temporal_numeric | probability | long_policy | all")
+    ap.add_argument("--family", default="all", help="temporal_numeric | probability | long_policy | temporal_v2 | all")
     ap.add_argument("--n-train", type=int, default=2000)
     ap.add_argument("--n-dev", type=int, default=300)
     ap.add_argument("--n-test", type=int, default=500)
