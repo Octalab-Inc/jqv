@@ -1,0 +1,91 @@
+{
+  "dataset": "synth-long_policy-test",
+  "n": 500,
+  "baseline": "zero-shot",
+  "rows": [
+    {
+      "run": "zero-shot",
+      "accuracy": 0.356,
+      "ci95": 0.041970003154634145,
+      "delta": 0.0,
+      "delta_ci": [
+        0.0,
+        0.0
+      ],
+      "win": 0,
+      "lose": 0,
+      "mcnemar_p": 1.0,
+      "T": 1.0,
+      "selective": {
+        "0.5": {
+          "coverage": 0.994,
+          "accuracy": 0.358148893360161
+        },
+        "0.7": {
+          "coverage": 0.928,
+          "accuracy": 0.3599137931034483
+        },
+        "0.9": {
+          "coverage": 0.854,
+          "accuracy": 0.3559718969555035
+        }
+      }
+    },
+    {
+      "run": "v1 head",
+      "accuracy": 0.566,
+      "ci95": 0.043443434265720754,
+      "delta": 0.21,
+      "delta_ci": [
+        0.158,
+        0.266
+      ],
+      "win": 153,
+      "lose": 48,
+      "mcnemar_p": 5.723577652495338e-14,
+      "T": 1.0,
+      "selective": {
+        "0.5": {
+          "coverage": 0.756,
+          "accuracy": 0.6349206349206349
+        },
+        "0.7": {
+          "coverage": 0.408,
+          "accuracy": 0.7107843137254902
+        },
+        "0.9": {
+          "coverage": 0.048,
+          "accuracy": 0.625
+        }
+      }
+    },
+    {
+      "run": "v2 head",
+      "accuracy": 0.544,
+      "ci95": 0.043656904663523725,
+      "delta": 0.188,
+      "delta_ci": [
+        0.132,
+        0.244
+      ],
+      "win": 158,
+      "lose": 64,
+      "mcnemar_p": 2.3445092086990885e-10,
+      "T": 1.0,
+      "selective": {
+        "0.5": {
+          "coverage": 0.446,
+          "accuracy": 0.6771300448430493
+        },
+        "0.7": {
+          "coverage": 0.098,
+          "accuracy": 0.7142857142857143
+        },
+        "0.9": {
+          "coverage": 0.0,
+          "accuracy": null
+        }
+      }
+    }
+  ]
+}

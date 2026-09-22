@@ -882,6 +882,51 @@ JevBench の temporal 問題と 8 語以上重なったので、意味を変え�
 JevBench public hard の family 別（v1 run `qwen3-14b_hardfam_T` と zero-shot `qwen3-14b_packed_T` との対比）。gate は「v2 synth が v1 head より改善し、
 JevBench temporal_numeric が zero-shot（5/15）を下回らない」。
 
+### v2 の結果（14B、GB10）: 負の転移が消え、hard tier 全体が初めて有意に上がった
+
+学習は 14B で 13 秒/step（600 step で 2.2 時間 + 検証）、best は step 400（val NLL 0.888）。temporal_v2 dev は 0.417 → 0.500 → 0.542 → 0.656 → 0.635 → 0.635（100 step ごと）。
+zero-shot の難易度: temporal_v2 test は 14B 0.244、32B 0.184（v1 の 0.27 / 0.30 より難しい。誤誘導メモに従う割合が scenario により 0.5〜0.9 で、zero-shot はほぼメモをなぞる）。
+v1 の 14B head を v2 test に当てた対照は 0.358（v1 の学習で +11 pt だが、v2 は別の分布）。
+
+| JevBench public hard（14B、served T） | long_policy | multi_hop | temporal_numeric | probability | tradeoff | ambiguous | judge_hard | adversarial | trap | routing_hard | 全体 | ECE | Brier | ordinal MAE |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| zero-shot | 5/19 | 10/18 | 5/15 | 5/10 | 1/6 | 4/7 | 14/17 | 5/6 | 7/8 | 5/5 | 61/111 = 0.550 | 0.126 | 0.594 | 0.82 |
+| v1 head（前節） | 8/19 | 10/18 | **3/15** | 6/10 | 3/6 | 5/7 | 14/17 | 5/6 | 8/8 | 5/5 | 67/111 = 0.604 | 0.102 | 0.466 | 0.49 |
+| **v2 head** | **12/19** | 11/18 | **6/15** | 6/10 | 3/6 | 5/7 | 12/17 | 6/6 | 8/8 | 5/5 | **74/111 = 0.667** | **0.099** | **0.442** | **0.43** |
+
+対応比較（同じ 111 問）: v2 vs zero-shot は 22 勝 9 敗、exact McNemar **p=0.029**（この一連の実験で初めて有意）。v2 vs v1 head は 11 勝 4 敗（p=0.12）、v1 vs zero-shot は 16 勝 10 敗（p=0.33）。
+14B の v2 head は 32B zero-shot（68/111）と 32B の v1 head（72/111）を上回る。v1 → v2 の入れ替わりは long_policy +4、temporal_numeric +4 / −1、multi_hop +2 / −1、adversarial +1、judge_hard −2。
+
+temporal_numeric の 15 問を個別に見ると、v2 が取り戻したのは時差をまたぐ経過時間（服薬スケジュール）、ほぼ同率だった日付の 2 択、期限判定など 4 問で、
+scenario の手本にした 2 問（EUR の宿泊換算、30 か月上限。前節で 32B が落とした問題）は v2 でも落としている（30 か月上限は「covered」と答える）。
+つまり効いたのは問題文の型の暗記ではなく計算型の汎化で（contamination 0 とも整合）、最も長い導出を要する 2 問はまだ届いていない。
+
+| test（14B） | zero-shot | v1 head | v2 head | v2 vs zero-shot Δ [95% CI] | McNemar p |
+|---|---:|---:|---:|---:|---:|
+| synth temporal_v2（500） | 0.244 | 0.358 | **0.614** | +0.370 [+0.318, +0.424]（218 勝 33 敗） | <0.001 |
+| synth temporal_numeric v1（500） | 0.272 | **0.694** | 0.554 | +0.282 [+0.220, +0.340] | <0.001 |
+| synth long_policy（500） | 0.356 | 0.566 | 0.544 | +0.188 [+0.132, +0.244] | <0.001 |
+| synth probability（500） | 0.482 | 0.752 | 0.752 | +0.270 [+0.214, +0.326] | <0.001 |
+| MMLU（800） | 0.750 | 0.760 | 0.764 | +0.014 [−0.005, +0.031] | 0.19 |
+
+- v2 head の生の校正（T=1）: temporal_v2 ECE 0.093（平均 confidence 0.58）、temporal v1 0.086、long_policy 0.070、probability 0.106。選択的精度は temporal_v2 で p ≥ 0.7 の 28% を精度 0.93、p ≥ 0.5 の 62% を 0.77。
+  MMLU の温度は 1.80（v1）→ 1.61、温度後の ECE 0.063 → 0.045。
+- scenario 別（v2 head、temporal_v2 test）: effective_expiry 0.72、term_vs_cap 0.68、deadline_boolean 0.62、multi_condition 0.58、fx_lines_cap 0.48。誤誘導メモに従う割合は 0.08〜0.28（zero-shot 0.49〜0.92）。
+  fx_lines_cap（行ごとの換算 + 上限 + 閾値）が最も残り、JevBench で落としている EUR 換算問題と対応する。
+- v1 temporal の −14 pt（v1 head 0.694 → 0.554）は temporal 枠を 0.25 → 0.10 に減らした分で、dst_cutoff（0.50 → 0.33）と prorated_invoice（0.56 → 0.40）が主因。JevBench には現れない
+  （v1 の scenario が JevBench の temporal 問題型と合っていなかった、という前節の見立てと整合）。long_policy（−2.2 pt）と probability（±0）は誤差の範囲、MMLU は退行なし。
+
+gate（v2 synth が v1 head より改善、JevBench temporal_numeric が zero-shot 以上、他 family 合計が v1 run から 2 問以上落ちない、MMLU −1 pt 以内）は全て通過。
+
+読み取れること:
+
+1. **学習分布を「JevBench が要求する計算型」に合わせると、temporal_numeric の負の転移は消える**（14B 5 → 3 が 5 → 6）。合成データの量ではなく型の問題だった。
+2. **hard tier 全体も動いた。** 61 → 74 / 111 は同じ 111 問での対応比較で初めて有意（p=0.029）。long_policy が 8 → 12 と最も伸びたのは、v2 の「期間 vs 上限」「複数条件の最も早いもの」「AND / OR」が
+   約款読解の計算にも効いたためと見られる。副作用は judge_hard の 2 問。
+3. **決定分布の質も同方向に改善**（ECE 0.102 → 0.099、Brier 0.466 → 0.442、ordinal MAE 0.49 → 0.43）。
+4. 但し書き: family あたり 10〜19 問、temporal は 15 問。手本にした 2 問は依然として落とす。v2 synth は v1 より難しく、in-distribution の数値は「メモを無視して計算できたか」の指標。
+5. 次: 同じ mix で 32B（v1 の 32B head 72/111、temporal 2/15 との対比）。
+
 ## サンプル: jqgrep（jqv による cascade 型 semantic code search、`jqgrep/`）
 
 jqv を「1 つの長い state に多数の decision を掛けるアプリ」として使う例。index も埋め込みも持たず、毎回 live のファイルツリーを見る。

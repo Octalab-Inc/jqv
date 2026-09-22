@@ -66,6 +66,10 @@ Findings, in one line each (details in the report):
    +22 to +42 points in-distribution at 14B/32B, but JevBench hard moves 68 → 72 / 111 at 32B (13 won / 9 lost, p=0.52) with
    better calibration (ECE 0.127 → 0.096, Brier 0.516 → 0.415); probability transfers, long-policy barely, and temporal-numeric
    training hurts reproducibly (5 → 3 / 15 at 14B, 4 → 2 at 32B).
+7. Rebuilding the temporal generator around the computations those items need (term vs cap, FX lines with a per-night cap,
+   earliest-of expiry conditions, deadline booleans, AND/OR tiers) removes the negative transfer at 14B (temporal 3 → 6 / 15) and
+   lifts the public hard tier to 74 / 111 (22 won / 9 lost vs zero-shot, p=0.029), above the 32B zero-shot; the two items the
+   scenarios were modelled on are still missed, so the gain is computation-type generalisation, not memorisation.
 
 ## Quick start
 

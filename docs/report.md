@@ -881,6 +881,50 @@ Probability reasoning transfers positively, long-policy transfer is limited, and
 14B and 32B. Generic targeted fine-tuning is therefore insufficient; the next iteration redesigns the temporal-numeric generator around the computation
 patterns observed in the held-out-style errors rather than simply increasing data volume.
 
+## Temporal generator v2 (14B): matching the training distribution to the computations JevBench asks for
+
+The targeted-LoRA result above showed a reproducible negative transfer on JevBench temporal_numeric (5 → 3 / 15 at 14B, 4 → 2 at 32B) although the
+synthetic temporal test improved by 37–42 points. Reading the lost items, what they need is not calendar arithmetic (month-end rules, DST, business days)
+but the computation that decides the choice: foreign-currency lines converted at the table rate of the transaction date and capped per night, a contract
+term (extended by repair days) against an absolute cap counted from the manufacture date, the earliest of several expiry conditions, before/after-deadline
+booleans with inclusive/exclusive counting, and AND / OR over several derived numbers. `jqv/synth/temporal_v2.py` implements exactly those five
+scenarios (`term_vs_cap`, `fx_lines_cap`, `effective_expiry`, `deadline_boolean`, `multi_condition`) as a separate family: solver-verified answers, a
+derivation trace, a desk note that argues for a wrong reading, and a split keyed on the solved inputs only (one computation appears in exactly one split
+and one question type). 2,000 / 300 / 500 items, states of 270–990 tokens (median 486), 4–8 derivation hops, 0 shared 8-grams with the JevBench public
+items (every clause that echoed JevBench wording was rephrased), 20 % of the training paragraphs paraphrased by Qwen3-14B. Zero-shot the set is hard:
+14B 0.244, 32B 0.184, with the models following the desk note on 50–90 % of the items.
+
+Training kept the v1 scenarios (to separate "forgot v1" from "learned v2") and split the temporal share 40 / 60:
+`--train-mix synth:long_policy=0.25,synth:temporal_numeric=0.10,synth:temporal_v2=0.15,synth:probability=0.2,mmlu=0.3`, otherwise the same recipe as
+before (slot + LoRA r=16, CE only, 600 steps × batch 8, max_len 4096; 13 s/step on a GB10, best at step 400).
+
+| JevBench public hard (14B, served T) | long_policy | multi_hop | temporal_numeric | probability | tradeoff | ambiguous | judge_hard | adversarial | trap | routing_hard | all | ECE | Brier | ordinal MAE |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| zero-shot | 5/19 | 10/18 | 5/15 | 5/10 | 1/6 | 4/7 | 14/17 | 5/6 | 7/8 | 5/5 | 61/111 = 0.550 | 0.126 | 0.594 | 0.82 |
+| v1 head | 8/19 | 10/18 | **3/15** | 6/10 | 3/6 | 5/7 | 14/17 | 5/6 | 8/8 | 5/5 | 67/111 = 0.604 | 0.102 | 0.466 | 0.49 |
+| **v2 head** | **12/19** | 11/18 | **6/15** | 6/10 | 3/6 | 5/7 | 12/17 | 6/6 | 8/8 | 5/5 | **74/111 = 0.667** | **0.099** | **0.442** | **0.43** |
+
+Paired on the same 111 items, v2 vs zero-shot is 22 won / 9 lost (exact McNemar p=0.029, the first significant improvement in this series); v2 vs the v1
+head is 11 / 4 (p=0.12). The 14B v2 head is above the 32B zero-shot (68) and the 32B v1 head (72). Item by item, v2 recovers four temporal items (elapsed
+time across time zones, a near-tie date, deadline booleans) but still misses the two items the scenarios were modelled on (the EUR lodging conversion and
+the 30-month cap), so the gain is computation-type generalisation rather than pattern memorisation. Long-policy items also improve (8 → 12), judge items
+lose two.
+
+| test (14B) | zero-shot | v1 head | v2 head | v2 vs zero-shot Δ [95% CI] | p |
+|---|---:|---:|---:|---:|---:|
+| synth temporal_v2 (500) | 0.244 | 0.358 | **0.614** | +0.370 [+0.318, +0.424] | <0.001 |
+| synth temporal_numeric v1 (500) | 0.272 | **0.694** | 0.554 | +0.282 [+0.220, +0.340] | <0.001 |
+| synth long_policy (500) | 0.356 | 0.566 | 0.544 | +0.188 [+0.132, +0.244] | <0.001 |
+| synth probability (500) | 0.482 | 0.752 | 0.752 | +0.270 [+0.214, +0.326] | <0.001 |
+| MMLU (800) | 0.750 | 0.760 | 0.764 | +0.014 [−0.005, +0.031] | 0.19 |
+
+The v1 temporal set loses 14 points against the v1 head (its share fell from 0.25 to 0.10; dst_cutoff and prorated_invoice account for most of it) without
+any trace on JevBench, consistent with those scenarios not matching the JevBench temporal items in the first place; long-policy, probability and MMLU are
+unchanged. Raw calibration of the v2 head stays usable (synthetic ECE 0.07–0.11 at T=1; MMLU temperature 1.61, ECE after T 0.045).
+
+Conclusion: matching the temporal training distribution to the computations JevBench asks for removes the negative transfer at 14B and lifts the whole
+public hard tier to 74 / 111; the next step is the same mixture at 32B.
+
 ## Related projects
 
 Several public implementations arrived independently at the same hypotheses in 2026 (read the option-token logits directly

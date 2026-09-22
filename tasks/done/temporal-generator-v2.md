@@ -1,6 +1,6 @@
 ---
 title: temporal_numeric 生成器 v2: JevBench で落とす計算型を教師データにして負の転移をなくす
-status: pending
+status: done
 priority: P1
 created_at: 2026-09-23T00:23:31+09:00
 depends_on:
@@ -83,3 +83,22 @@ uv run python scripts/jevbench_families.py --labels qwen3-14b_packed_T qwen3-14b
 - test は rule / program seed 単位で train から分離する。
 - Success gate は予定どおり: 14B で v2 synth が v1 より改善し、JevBench temporal_numeric が zero-shot を下回らないこと。全 hard と MMLU は非退行の確認に使う。
 - 目的は学習量を増やすことではなく、JevBench で要求される計算型へ学習分布を合わせると負の転移が消えるかの検証。通れば 32B へ。
+
+# Result
+
+- Changed: `jqv/synth/temporal_v2.py`（新 family `temporal_v2`、5 scenario、program key を signature にする split）、`jqv/synth/__init__.py`（FAMILIES）、
+  `jqv/synth/generate.py`（MODULES）、`jqv/synth/paraphrase.py`（CUDA 対応、v2 の事実段落の接頭辞）、`tests/test_synth.py`（solver 5 本 + split 分離 + 妥当性）、
+  `data/synth/temporal_v2/{dev,test}.jsonl`、`summary.json`、`train.paraphrase.jsonl`（400 item）。結果: `results/jevbench/qwen3-14b_hardfam_v2_T`、
+  `results/jevbench_families_14b_v2.json`、`results/compare_synth_*_14b_v2.json`、`results/compare_mmlu_14b_v2.json`、`results/synth_difficulty_14b_v2.md`、
+  `results/synth-temporal_v2-*`、`results/train_14b-hardfam-v2_log.jsonl`。checkpoint は `results/train/14b-hardfam-v2/best`（git 外、Mac に回収済み）。
+  `docs/report.ja.md` の temporal_v2 節（設計 + 結果）、`docs/report.md` の英語節、README の Findings。
+- Verified: gate 4 条件とも通過。temporal_v2 test 0.244 → 0.614（v1 head 0.358、p<0.001）；JevBench temporal_numeric 6/15（zero-shot 5、v1 head 3）；
+  hard 全体 61 → 74 / 111（v1 run 67。v2 vs zero-shot 22 勝 9 敗 p=0.029）；MMLU 0.750 → 0.764。contamination 8-gram 共有 0、program key の split 重複 0、
+  train の md5 が Mac と GB10 で一致（seed 0 + patch から再現可能）。
+- Deviations: 言い換えの対象は train の 20%（479 候補段落 → 400 採用。v1 は 28%）。paraphrase.py が GB10 では CPU で動いていた（MPS/CPU しか見ていなかった）ため、
+  初回は学習前に止めて CUDA 対応後に再実行した。v1 temporal の synth test は v1 head 比 −14 pt（temporal 枠 0.25 → 0.10 の分。JevBench には出ない）。
+  judge_hard が v1 run から 2 問減（合計では +7）。v2 synth の zero-shot 難易度は v1 より高い（32B 0.184）。
+- Remaining: 手本にした 2 問（EUR 換算、30 か月上限）は v2 でも不正解。fx_lines_cap は scenario 中最も低い（0.48）。32B の学習は別判断（ユーザー）。
+- Conclusion: matching the temporal training distribution to the computations JevBench asks for removes the negative transfer at 14B (3 → 6 / 15) and lifts
+  the whole public hard tier to 74 / 111, the first paired improvement that is significant (p=0.029); the effect is computation-type generalisation, not
+  item memorisation (contamination 0, the two modelled items still fail).
