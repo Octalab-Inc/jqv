@@ -845,6 +845,43 @@ transfer across 14B and 32B. Generic targeted fine-tuning is therefore insuffici
 around the actual computation patterns observed in held-out-style errors rather than simply increasing data volume.**
 次の一手は temporal generator v2（RLCD より先に「何を計算させるべきか」の分布を合わせる）。
 
+## temporal_numeric 生成器 v2（`jqv/synth/temporal_v2.py`、`data/synth/temporal_v2/`）: JevBench が要求する計算型へ学習分布を合わせる
+
+前節の結論（temporal_numeric の負の転移が 14B / 32B で再現）を受けて、合成データを増やすのではなく問題型を作り直した。
+JevBench hard で落とした temporal 問題を読み直すと、必要なのは月末規則や DST の暦計算ではなく、**choice を決めるまでの数値計算**だった:
+為替テーブルから取引日のレートを引いて行ごとに換算し、1 泊ごとの上限を当てて税を全額戻す（EUR 498.81 か 513.69 か）、
+納品からの保証期間（修理日数で延長）と製造日からの絶対上限のどちらが先に尽きるか（expired_30_month_cap か covered か）、
+発効日と複数の失効条件の最も早いもの、期限の前後の真偽（日の数え方・営業日繰り越し・締切時刻・時差）、複数の数値条件の AND / OR。
+ユーザーの指定（契約期間 + 上限期間、金額 + 通貨 + 閾値、発効日 + 失効条件、期限以前 / 以後の boolean、複数数値条件の AND/OR）に沿って 5 scenario を書いた。
+
+| scenario | 計算 | 質問型 | 誤誘導メモの型（抜粋） |
+|---|---|---|---|
+| `term_vs_cap` | N か月の保証（修理で受領〜返送の両端込みの日数だけ延長）と、製造日（バッチコードの ISO 週の月曜から導く場合あり）からの C か月の絶対上限の早い方。クレーム日は顧客の時刻を desk の時刻へ換算 | covered / expired_term / expired_cap、yes/no、終了日 | 上限を無視、延長を無視、上限を納品日から数える、修理で期間が再開、30 日 × N、30 か月目の初日から失効 |
+| `fx_lines_cap` | 外貨の宿泊明細を取引日（チェックアウト日）のテーブルレートで行ごとに換算（未掲載日は直前の掲載日）、1 泊ごとの上限、税は全額、除外行、閾値で承認レベル | 金額（5 択）、auto / manager / director、閾値超過の yes/no | 計上日のレート、上限なし、合計に上限、除外行を含める、到着日のレート、税を上限内に含める |
+| `effective_expiry` | 発効日からの固定期間、譲渡 + 猶予日数、解約通知の受領 + 通知期間（通知日ではない）、年会費未納で失効、の最も早いもの | どの条件か、終了日、指定日に有効か | 固定期間だけ見る、猶予を無視、通知日から数える、未納を無視、最も遅い条件を採る |
+| `deadline_boolean` | 事象から N 日（事象日を数えるか否か）、最終日が休業日なら翌営業日へ（規則による）、締切時刻を office の時刻で、提出時刻は別の時差 | 期限内の yes/no、on_time / late_with_fee / rejected、期限日 | 事象日の数え違い、繰り越しの有無を逆に、時差換算なし、締切時刻を無視、営業日で数える |
+| `multi_condition` | 12 か月窓の四半期支出の合計、開設日からの在籍月数、窓内の遅延支払件数、紹介数を AND / OR / NOT で結合した tier（停止歴の除外付き） | gold / silver / standard、gold か、満たす条件数（score 0〜4） | AND と OR の取り違え、窓外の四半期・支払を含める、停止歴を無視 |
+
+設計は v1 と同じ（solver が答えを出し、Trace から `dependency_hops`、誤誘導メモは真の答えと食い違うまで再抽選）だが、次の点を変えた:
+
+- **split は program key 単位。** item の signature を「解かれた入力」（日付・金額・レート表・条件）だけにし、名前・filler・言い回し・質問型を含めない。
+  同じ計算問題は 1 つの split の 1 つの質問型にしか現れない（v1 は signature に質問型の接尾辞が付くので、同じ計算が train と test に別の質問型で入り得た）。
+  `meta.program_key` に鍵を残し、テスト `test_v2_program_keys_are_split_disjoint` で train / dev / test の重複 0 を確認する。
+- **v1 は残す**（月末・営業日・DST・単位換算の能力を忘れたのか、新しい計算型が効いたのかを分けるため）。別 family `temporal_v2` として追加し、
+  学習の混合比は temporal の枠 0.25 を v1 0.10 / v2 0.15（40 / 60）に分ける。5 scenario は均等重み。
+- 5 つの solver に手計算のケース（facts 上書き）のテストを付けた（例: JPY 3 泊の明細で日曜チェックアウト → 金曜のレート、481.30 EUR）。
+
+データ: train 2,000 / dev 300 / test 500（seed 0、重複 0、再生成は Mac と GB10 で md5 一致）。scenario は各 19〜21%、質問型は choice 64% / noul 31% / score 5%、
+`dependency_hops` 4〜8（中央値 5、v1 は 3〜4）、state は 266〜986 token（中央値 486。v1 の 310 より長く、JevBench hard に近い）。
+誤誘導メモが真の答えと食い違う item は scenario により 86〜100%。JevBench public との contamination check は 8-gram 共有 0（当初は条項の言い回しと質問文が
+JevBench の temporal 問題と 8 語以上重なったので、意味を変えずに全て言い換えた）。train の 30% は Qwen3-14B で事実段落を 1 つ言い換え（v1 と同じ手順、GB10 で実行）。
+
+学習と評価（14B、GB10 A で学習、B で評価）: recipe は v1 と同一（slot + LoRA r=16、λ=0、600 step × batch 8、max_len 4096）で
+`--train-mix synth:long_policy=0.25,synth:temporal_numeric=0.10,synth:temporal_v2=0.15,synth:probability=0.2,mmlu=0.3`。
+比較対象は 14B zero-shot（temporal_v2 test）、v1 の 14B head（`14b-hardfam`）を temporal_v2 test に当てた対照、v1 の 3 family test と MMLU 800 の非退行、
+JevBench public hard の family 別（v1 run `qwen3-14b_hardfam_T` と zero-shot `qwen3-14b_packed_T` との対比）。gate は「v2 synth が v1 head より改善し、
+JevBench temporal_numeric が zero-shot（5/15）を下回らない」。
+
 ## サンプル: jqgrep（jqv による cascade 型 semantic code search、`jqgrep/`）
 
 jqv を「1 つの長い state に多数の decision を掛けるアプリ」として使う例。index も埋め込みも持たず、毎回 live のファイルツリーを見る。
