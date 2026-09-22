@@ -103,7 +103,7 @@ def load_model(model_id: str):
 
     tok = AutoTokenizer.from_pretrained(model_id)
     tok.padding_side = "left"
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
     model = AutoModelForCausalLM.from_pretrained(model_id, dtype=torch.bfloat16).to(device).eval()
     return tok, model, device
 
