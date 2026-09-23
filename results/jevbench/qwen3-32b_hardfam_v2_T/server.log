@@ -1,0 +1,122 @@
+INFO:     Started server process [1362734]
+INFO:     Waiting for application startup.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/707 [00:00<?, ?it/s]Loading weights: 100%|██████████| 707/707 [00:00<00:00, 10517.37it/s]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8010 (Press CTRL+C to quit)
+INFO:     127.0.0.1:35692 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35700 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37532 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37536 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37552 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46198 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46206 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46216 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56018 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56022 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56028 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56030 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56036 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56048 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56062 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48676 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48690 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48706 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48710 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48724 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48740 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48746 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48748 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48758 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48760 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48762 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59424 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59436 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59440 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47312 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47324 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47338 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47348 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47352 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47466 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47482 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47486 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47498 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47510 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47516 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47518 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47520 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43370 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43386 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48242 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48254 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48260 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57838 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57848 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57852 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37332 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37334 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37350 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37360 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37372 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37378 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37394 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37396 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37412 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37428 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37438 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37446 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54594 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54600 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54606 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34400 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34414 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34426 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58278 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58282 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58298 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58310 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58316 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58332 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58334 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58344 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58350 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50796 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50802 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50808 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50810 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50824 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50836 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50844 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50846 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50854 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50858 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50472 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50474 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50480 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50492 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50502 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50514 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45998 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46004 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46014 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46022 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46026 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46040 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46050 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46062 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46066 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46068 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46072 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46080 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46082 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46090 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46104 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48436 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48446 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48456 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48470 - "POST /v1/systemone HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1362734]

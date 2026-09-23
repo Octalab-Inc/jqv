@@ -1,0 +1,13 @@
+{
+  "temperature": 1.7012738585242482,
+  "model": "Qwen/Qwen3-32B",
+  "engine": "slot",
+  "dataset": "jmmlu",
+  "dtype": "torch.bfloat16",
+  "prompt_hash": "4f85a0b34776",
+  "n_val": 400,
+  "choice_counts": [
+    4
+  ],
+  "fitted_at": "2026-09-23T19:53:02+09:00"
+}
