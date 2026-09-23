@@ -70,6 +70,10 @@ Findings, in one line each (details in the report):
    earliest-of expiry conditions, deadline booleans, AND/OR tiers) removes the negative transfer at 14B (temporal 3 → 6 / 15) and
    lifts the public hard tier to 74 / 111 (22 won / 9 lost vs zero-shot, p=0.029), above the 32B zero-shot; the two items the
    scenarios were modelled on are still missed, so the gain is computation-type generalisation, not memorisation.
+8. The same v2 mixture at 32B reaches 82 / 111 on the public hard tier (19 won / 5 lost vs zero-shot, p=0.007; temporal 7 / 15,
+   probability 9 / 10, Brier 0.390) with MMLU/JMMLU unchanged; ECE (0.118) is worse than the first targeted head (0.096). This
+   configuration is submitted to Benchmark Heaven as its own row, `jqv-targeted` (checkpoint in the `targeted-v2-32b` release,
+   instructions in [docs/jevbench-serving.md](docs/jevbench-serving.md)); the held-out and sealed items are the real test.
 
 ## Quick start
 

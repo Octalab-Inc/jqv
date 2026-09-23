@@ -1,0 +1,91 @@
+{
+  "dataset": "synth-probability-test",
+  "n": 500,
+  "baseline": "zero-shot",
+  "rows": [
+    {
+      "run": "zero-shot",
+      "accuracy": 0.468,
+      "ci95": 0.0437370827010673,
+      "delta": 0.0,
+      "delta_ci": [
+        0.0,
+        0.0
+      ],
+      "win": 0,
+      "lose": 0,
+      "mcnemar_p": 1.0,
+      "T": 1.0,
+      "selective": {
+        "0.5": {
+          "coverage": 0.976,
+          "accuracy": 0.4713114754098361
+        },
+        "0.7": {
+          "coverage": 0.822,
+          "accuracy": 0.48175182481751827
+        },
+        "0.9": {
+          "coverage": 0.562,
+          "accuracy": 0.5409252669039146
+        }
+      }
+    },
+    {
+      "run": "v1 head",
+      "accuracy": 0.766,
+      "ci95": 0.03711020750144089,
+      "delta": 0.298,
+      "delta_ci": [
+        0.242,
+        0.352
+      ],
+      "win": 195,
+      "lose": 46,
+      "mcnemar_p": 5.0710738822614346e-23,
+      "T": 1.0,
+      "selective": {
+        "0.5": {
+          "coverage": 0.908,
+          "accuracy": 0.8039647577092511
+        },
+        "0.7": {
+          "coverage": 0.708,
+          "accuracy": 0.8785310734463276
+        },
+        "0.9": {
+          "coverage": 0.496,
+          "accuracy": 0.9193548387096774
+        }
+      }
+    },
+    {
+      "run": "v2 head",
+      "accuracy": 0.77,
+      "ci95": 0.03688759574708007,
+      "delta": 0.302,
+      "delta_ci": [
+        0.248,
+        0.356
+      ],
+      "win": 192,
+      "lose": 41,
+      "mcnemar_p": 1.4977235667816337e-24,
+      "T": 1.0,
+      "selective": {
+        "0.5": {
+          "coverage": 0.958,
+          "accuracy": 0.7870563674321504
+        },
+        "0.7": {
+          "coverage": 0.814,
+          "accuracy": 0.8353808353808354
+        },
+        "0.9": {
+          "coverage": 0.558,
+          "accuracy": 0.899641577060932
+        }
+      }
+    }
+  ]
+}

@@ -927,6 +927,64 @@ gate（v2 synth が v1 head より改善、JevBench temporal_numeric が zero-sh
 4. 但し書き: family あたり 10〜19 問、temporal は 15 問。手本にした 2 問は依然として落とす。v2 synth は v1 より難しく、in-distribution の数値は「メモを無視して計算できたか」の指標。
 5. 次: 同じ mix で 32B（v1 の 32B head 72/111、temporal 2/15 との対比）。
 
+### 32B に v2 mix をスケール（`32b-hardfam-v2`）: hard 82 / 111、temporal 7 / 15、`jqv-targeted` として提出
+
+14B の gate を通した設計をそのまま 32B に適用した（mix long_policy 0.25 / temporal v1 0.10 / temporal v2 0.15 / probability 0.20 / MMLU 0.30、
+recipe は v1 の 32B と同一）。GB10 A で 533 分（47 秒/step）、best は step 600（val NLL 0.799。14B v2 は 0.888）。評価は B で synth 4 family、A で MMLU / JMMLU / JevBench。
+
+| step | val_acc | val NLL | long_policy | temporal v1 | temporal_v2 | probability | MMLU val |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.509 | 1.427 | 0.406 | 0.406 | 0.458 | 0.604 | 0.750 |
+| 200 | 0.558 | 1.093 | 0.448 | 0.490 | 0.521 | 0.656 | 0.734 |
+| 300 | 0.638 | 0.900 | 0.583 | 0.531 | 0.667 | 0.698 | 0.750 |
+| 400 | 0.685 | 0.814 | 0.677 | 0.542 | 0.729 | 0.750 | 0.750 |
+| 500 | 0.694 | 0.802 | 0.646 | 0.594 | 0.729 | 0.771 | 0.750 |
+| 600 | **0.699** | **0.799** | 0.646 | 0.615 | **0.750** | 0.750 | 0.750 |
+
+| JevBench public hard（32B、served T） | long_policy | multi_hop | temporal_numeric | probability | tradeoff | ambiguous | judge_hard | adversarial | trap | routing_hard | 全体 | ECE | Brier | ordinal MAE | macro acc |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| zero-shot（GB10） | 9/19 | 10/18 | 4/15 | 4/10 | 3/6 | 5/7 | 14/17 | 6/6 | 8/8 | 5/5 | 68/111 = 0.613 | 0.127 | 0.516 | 0.77 | 0.673 |
+| v1 head | 10/19 | 11/18 | **2/15** | 8/10 | 3/6 | 6/7 | 14/17 | 6/6 | 7/8 | 5/5 | 72/111 = 0.649 | **0.096** | 0.415 | 0.56 | 0.713 |
+| **v2 head** | 11/19 | 12/18 | **7/15** | **9/10** | 5/6 | 5/7 | 14/17 | 6/6 | 8/8 | 5/5 | **82/111 = 0.739** | 0.118 | **0.390** | **0.53** | **0.798** |
+| 参考: 14B v2 head | 12/19 | 11/18 | 6/15 | 6/10 | 3/6 | 5/7 | 12/17 | 6/6 | 8/8 | 5/5 | 74/111 = 0.667 | 0.099 | 0.442 | 0.43 | - |
+
+対応比較（同じ 111 問）: v2 vs zero-shot **19 勝 5 敗、exact McNemar p=0.0066**。v2 vs v1 head 15 勝 5 敗、p=0.041。v1 → v2 の入れ替わりは
+獲得 15（temporal_numeric 5、long_policy 3、multi_hop 3、tradeoff 2、probability 1、trap 1）、喪失 5（long_policy 2、multi_hop 2、ambiguous 1）。
+temporal_numeric は v1 から失った問題が 0 で、取り戻した 5 問には手本にした EUR の宿泊換算（`eur_498_81`）が含まれる。30 か月上限の問題は依然不正解
+（v1 は covered、v2 は expired_24_month_term と、誤り方が「上限を無視」から「延長を無視」に変わった）。残る不正解 8 問は金利期間の日割り計算、複数の EUR 換算、
+データ量の閾値など、v2 の scenario が覆っていない計算型が多い。
+
+| test（32B） | zero-shot | v1 head | v2 head | v2 vs zero-shot Δ [95% CI] | McNemar p |
+|---|---:|---:|---:|---:|---:|
+| synth temporal_v2（500） | 0.184 | 0.428 | **0.716** | +0.532 [+0.486, +0.582]（284 勝 18 敗） | <0.001 |
+| synth temporal_numeric v1（500） | 0.302 | **0.668** | 0.624 | +0.322 [+0.252, +0.384] | <0.001 |
+| synth long_policy（500） | 0.380 | 0.596 | 0.564 | +0.184 [+0.130, +0.238] | <0.001 |
+| synth probability（500） | 0.468 | 0.766 | 0.770 | +0.302 [+0.248, +0.356] | <0.001 |
+| MMLU（800） | 0.806 | **0.821** | 0.814 | +0.007 [−0.009, +0.022] | 0.44 |
+| JMMLU（800） | 0.767 | 0.779 | **0.786** | +0.019 [+0.001, +0.037] | 0.058 |
+
+- 校正: MMLU の温度 1.82（v1 1.75）、温度後 NLL 0.515 / ECE 0.034（v1 0.506 / 0.023、zero-shot 0.535 / 0.025）。JMMLU は温度後 NLL 0.570 / ECE 0.024（v1 0.587 / 0.040）。
+  synth の生 ECE（T=1）は temporal_v2 0.074、temporal v1 0.051、long_policy 0.075、probability 0.087。選択的精度は temporal_v2 で p ≥ 0.7 の 51% を精度 0.95。
+- JevBench hard の served ECE は 0.118 で v1（0.096）より悪い（zero-shot 0.127 よりは良い）。Brier 0.390、ordinal MAE 0.53、macro accuracy 0.80 は v1 より良い。
+  v2 head では上位 2 択の差が 0.05 未満の問題が 111 問中 17（zero-shot 7）で、迷う問題で確率を割る傾向が強く、それが ECE に出ている。温度は MMLU val で当てたもの。
+- scenario 別（v2 head、temporal_v2 test）: effective_expiry 0.81、multi_condition 0.78、term_vs_cap 0.77、deadline_boolean 0.72、fx_lines_cap 0.52（14B と同じ順で fx が最も残る）。
+  v1 temporal は v1 head 比 −4.4 pt（dst_cutoff 0.45、prorated 0.53）で、temporal 枠を減らした分の範囲。long_policy −3.2 pt、probability +0.4、MMLU −0.7、JMMLU +0.7。
+- 速度: 32B slot 評価は temporal_v2 500 問 7.5 分、long_policy 25 分。JevBench hard 111 問は約 4 分（+ ロード 6 分）。
+
+gate（ユーザー設定）: hard が v1 の 72 を上回る（82 ✓）、temporal_numeric が 2 / 15 から回復し最低 4、目標 6 以上（7 ✓）、probability 8 / 10 前後を維持（9 ✓）、
+long_policy / MMLU / JMMLU に明確な退行なし（11 / 19、−0.7 pt、+0.7 pt ✓）、ECE / Brier が悪化しない（Brier 0.415 → 0.390 ✓、ECE 0.096 → 0.118 ✗）。
+5 条件中 4 つを満たし、ECE のみ v1 より悪い。ユーザーの判断で `jqv-targeted` として Benchmark Heaven に 1 回だけ提出した（zero-shot の row は残す。
+checkpoint は GitHub release `targeted-v2-32b`、手順は `docs/jevbench-serving.md`）。
+
+読み取れること:
+
+1. **generator v2 による分布合わせの効果は backbone を跨いで再現した。** temporal_numeric は 14B で 3 → 6、32B で 2 → 7 / 15。zero-shot（4 / 15）も上回る。
+2. **hard 全体は 32B で 82 / 111 = 0.739**（zero-shot 比 +14 問、p=0.007）。14B v2（74）→ 32B v2（82）と backbone でも伸び、Jev 1.13.0 の public hard 74.1% にほぼ並ぶ。
+3. **精度と Brier / ordinal MAE / macro accuracy は改善したが、ECE は v1 より悪い。** 迷う問題で確率を割るようになった分で、温度の当て直し（JevBench 系の校正集合、または
+   `correctness-calibrator`）で詰める余地がある。
+4. **但し書き。** 生成器の scenario は public hard の落とした問題を読んで設計したので、public hard は我々にとって開発 gate であり held-out ではない
+（学習データ自体は合成で contamination 0）。Benchmark Heaven の held-out 109 問と sealed 308 問が本当の試験で、そこでの結果は別途記録する。
+
 ## サンプル: jqgrep（jqv による cascade 型 semantic code search、`jqgrep/`）
 
 jqv を「1 つの長い state に多数の decision を掛けるアプリ」として使う例。index も埋め込みも持たず、毎回 live のファイルツリーを見る。

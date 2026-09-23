@@ -925,6 +925,49 @@ unchanged. Raw calibration of the v2 head stays usable (synthetic ECE 0.07–0.1
 Conclusion: matching the temporal training distribution to the computations JevBench asks for removes the negative transfer at 14B and lifts the whole
 public hard tier to 74 / 111; the next step is the same mixture at 32B.
 
+### Scaling the v2 mixture to 32B (`32b-hardfam-v2`): hard 82 / 111, temporal 7 / 15, submitted as `jqv-targeted`
+
+The 14B-gated design was applied unchanged to Qwen3-32B (mixture long_policy 0.25 / temporal v1 0.10 / temporal v2 0.15 / probability 0.20 /
+MMLU 0.30; the recipe of the earlier 32B run). 533 min on a GB10 (47 s/step), best at step 600 (val NLL 0.799; the 14B v2 run reached 0.888).
+
+| JevBench public hard (32B, served T) | long_policy | multi_hop | temporal_numeric | probability | tradeoff | ambiguous | judge_hard | adversarial | trap | routing_hard | all | ECE | Brier | ordinal MAE | macro acc |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| zero-shot (GB10) | 9/19 | 10/18 | 4/15 | 4/10 | 3/6 | 5/7 | 14/17 | 6/6 | 8/8 | 5/5 | 68/111 = 0.613 | 0.127 | 0.516 | 0.77 | 0.673 |
+| v1 head | 10/19 | 11/18 | **2/15** | 8/10 | 3/6 | 6/7 | 14/17 | 6/6 | 7/8 | 5/5 | 72/111 = 0.649 | **0.096** | 0.415 | 0.56 | 0.713 |
+| **v2 head** | 11/19 | 12/18 | **7/15** | **9/10** | 5/6 | 5/7 | 14/17 | 6/6 | 8/8 | 5/5 | **82/111 = 0.739** | 0.118 | **0.390** | **0.53** | **0.798** |
+| 14B v2 head, for reference | 12/19 | 11/18 | 6/15 | 6/10 | 3/6 | 5/7 | 12/17 | 6/6 | 8/8 | 5/5 | 74/111 = 0.667 | 0.099 | 0.442 | 0.43 | - |
+
+Paired on the same 111 items: v2 vs zero-shot 19 won / 5 lost (exact McNemar p = 0.0066); v2 vs the v1 head 15 / 5 (p = 0.041). From v1 to v2 the
+head gains 15 items (temporal_numeric 5, long_policy 3, multi_hop 3, tradeoff 2, probability 1, trap 1) and loses 5 (long_policy 2, multi_hop 2,
+ambiguous 1); no temporal item is lost. The recovered temporal items include the EUR lodging conversion the scenarios were modelled on; the 30-month
+cap item is still wrong (the error moved from "ignores the cap" to "ignores the extension"), and the eight remaining misses are computations the v2
+scenarios do not cover (an interest-period day count, further FX conversions, a data-volume threshold).
+
+| test (32B) | zero-shot | v1 head | v2 head | v2 vs zero-shot Δ [95% CI] | p |
+|---|---:|---:|---:|---:|---:|
+| synth temporal_v2 (500) | 0.184 | 0.428 | **0.716** | +0.532 [+0.486, +0.582] | <0.001 |
+| synth temporal_numeric v1 (500) | 0.302 | **0.668** | 0.624 | +0.322 [+0.252, +0.384] | <0.001 |
+| synth long_policy (500) | 0.380 | 0.596 | 0.564 | +0.184 [+0.130, +0.238] | <0.001 |
+| synth probability (500) | 0.468 | 0.766 | 0.770 | +0.302 [+0.248, +0.356] | <0.001 |
+| MMLU (800) | 0.806 | **0.821** | 0.814 | +0.007 [−0.009, +0.022] | 0.44 |
+| JMMLU (800) | 0.767 | 0.779 | **0.786** | +0.019 [+0.001, +0.037] | 0.058 |
+
+Calibration: MMLU temperature 1.82, NLL after T 0.515, ECE after T 0.034 (v1 head 0.506 / 0.023); JMMLU 0.570 / 0.024 (v1 0.587 / 0.040); raw
+synthetic ECE 0.05–0.09 at T=1. On JevBench hard the served ECE is 0.118, worse than the v1 head (0.096) though better than zero-shot (0.127), while
+Brier (0.390), ordinal MAE (0.53) and macro accuracy (0.80) all improve: the v2 head splits its probability on more near-ties (17 of 111 items with a
+top-2 margin below 0.05, against 7 for zero-shot), and the temperature was fitted on MMLU, not on decision items.
+
+Gates set beforehand: hard above the v1 head's 72 (82, met); temporal_numeric recovered from 2 / 15 to at least the zero-shot 4, ideally 6+ (7, met);
+probability kept near 8 / 10 (9, met); no clear regression on long_policy / MMLU / JMMLU (11 / 19, −0.7, +0.7 points, met); ECE and Brier not worse
+(Brier met, ECE not). Four of five met; the user decided to submit the configuration once as its own row, `jqv-targeted`, keeping the zero-shot row
+(checkpoint: GitHub release `targeted-v2-32b`; instructions in [jevbench-serving.md](jevbench-serving.md)).
+
+What this shows: the distribution-alignment effect of generator v2 reproduces across backbones (temporal 3 → 6 at 14B, 2 → 7 at 32B); the public hard
+tier reaches 0.739 at 32B, close to Jev 1.13.0's 74.1 %; accuracy, Brier and ordinal error improve while ECE does not, which points at re-fitting the
+temperature on decision-style items. Caveat: the generator scenarios were designed after reading the public hard items that were lost, so for us the
+public hard tier is a development gate, not a held-out measurement (the training data itself is synthetic, 0 shared 8-grams); the held-out 109 and the
+308 sealed decisions at Benchmark Heaven are the real test.
+
 ## Related projects
 
 Several public implementations arrived independently at the same hypotheses in 2026 (read the option-token logits directly
