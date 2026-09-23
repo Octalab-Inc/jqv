@@ -129,9 +129,10 @@ uv run uvicorn jqv.server:app --host 127.0.0.1 --port 8000
 `"temperature": 1.818988859597101`, `"engine": "slot"`, `"dataset": "mmlu"`, `"n_val": 400`. The harness run is the
 same as above with `--engine slot --head-dir jqv-targeted-v2-32b/best --temperature-file jqv-targeted-v2-32b/temperature.json`.
 
-Public-tier numbers we measured with the harness at commit `7ce310c` (hard tier by family in
-`results/jevbench/qwen3-32b_hardfam_v2_T/`): hard 82 / 111 = 0.739 (zero-shot configuration above: 68 / 111 on the
-same machine; paired 19 won / 5 lost, exact McNemar p = 0.007), hard-tier top-label ECE 0.118, Brier 0.390. The
+Public-tier numbers we measured with the harness at commit `7ce310c` (per tier in
+`results/jevbench/qwen3-32b_hardfam_v2_T/`): easy 1.000, standard 0.958, hard 82 / 111 = 0.739 (the zero-shot
+configuration above: 1.000, 0.958, 68 / 111 on the same machine; on the hard tier paired 19 won / 5 lost, exact McNemar
+p = 0.007), hard-tier top-label ECE 0.118, Brier 0.390. The
 adapter adds no latency to the forward pass beyond the LoRA matmuls; measured single-decision throughput on the
 GB10 was the same as the zero-shot configuration within noise.
 
