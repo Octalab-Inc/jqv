@@ -9,3 +9,4 @@ results/public/watch_*
 results/public/*.log
 data/synth/*/train.jsonl
 .env
+results/jevbench/*/server.log
