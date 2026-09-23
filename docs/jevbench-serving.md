@@ -6,7 +6,8 @@ logits in one forward pass, with no decoding. It serves TypeSafe's wire format (
 JevBench `typesafe` adapter works unchanged. This page gives the exact configuration that Benchmark Heaven measured
 as a partial row in JevBench v1.2.7 ([issue #6](https://github.com/fstandhartinger/jevbench/issues/6)) and then, from
 this repository at commit 0189b67 on their own RunPod H100 NVL (torch 2.11 + CUDA 12.8), as a ranked row in v1.2.8
-([issue #9](https://github.com/fstandhartinger/jevbench/issues/9): #8 of 36, JevBench Score 70.1), and how to run it
+([issue #9](https://github.com/fstandhartinger/jevbench/issues/9): #8 of 36, JevBench Score 70.1; re-scored to #6 of 48 in v1.3.0
+and #12 of 71 in v1.4.0 with the sealed decisions), and how to run it
 on your own hardware. The full experimental report is in [report.md](report.md).
 
 ## Measured configuration

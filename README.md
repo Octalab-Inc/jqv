@@ -48,6 +48,8 @@ Benchmark Heaven measured the 32B zero-shot configuration twice: first through a
 endpoint was submitter-operated) and then, after this code was published, on their own RunPod H100 from commit 0189b67
 ([JevBench v1.2.8](https://github.com/fstandhartinger/jevbench/tree/v1.2.8), [jevbench#9](https://github.com/fstandhartinger/jevbench/issues/9)).
 The full run is a ranked row: **#8 of 36, JevBench Score 70.1** (Intelligence 86.1, Calibration 79.0, Speed 74.6, Cost 47.5);
+under the later re-scorings of the same measurements it is **#6 of 48 (68.6)** in v1.3.0 (chance-corrected Intelligence) and
+**#12 of 71 (44.4)** in v1.4.0, which adds 308 sealed decisions on which jqv scores 0.282 (field median 0.292, Jev 1.13.0 0.367);
 easy 1.000, standard 0.958, judge 0.925, hard 0.645 on all 220 items (Jev 1.13: 0.741); p50 0.75 s raw from Germany to a pod in
 Canada; $0.0564 per 1,000 decisions at the base model's public tariff.
 

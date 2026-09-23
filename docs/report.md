@@ -31,6 +31,7 @@ POST /decision
    zero-shot configuration first through a tunnel to our machine (JevBench v1.2.7, partial row: easy 1.000 / standard 0.958 /
    judge 0.925 / public hard 0.622, Score 67.2) and then, from the published serving code on their own H100, over all 534
    decisions (v1.2.8): **#8 of 36, JevBench Score 70.1**, hard 0.645 on all 220 items (Jev 0.741), Calibration 79.0.
+   Re-scored: #6 of 48 (68.6) in v1.3.0 and #12 of 71 (44.4) in v1.4.0, which adds 308 sealed decisions (jqv 0.282, field median 0.292).
 
 ## What was built
 
@@ -713,7 +714,17 @@ copies of the published row in `results/jevbench/published_v1.2.8/`, the comment
 
 | item | v1.2.8 (maintainers' H100, all 534 decisions) | v1.2.7 (tunnel to our Mac, 425 of 534) |
 |---|---:|---:|
-| rank / JevBench Score | **#8 of 36 / 70.1** | not ranked / 67.2 |
+| rank / JevBench Score | **#8 of 36 / 70.1** (re-scored: #6 of 48 / 68.6 in v1.3.0, #12 of 71 / 44.4 in v1.4.0) | not ranked / 67.2 |
+
+Later re-scorings of the same measurements: v1.3.0 (chance-corrected Intelligence) ranks jqv **#6 of 48 at 68.6** (I 79 / C 79 / S 75 / K 47);
+v1.4.0 (the official board as of September 2026: 308 sealed decisions added, harmonic mean, a penalty when public accuracy exceeds sealed accuracy by
+more than 25 points) ranks it **#12 of 71 at 44.4**. jqv's sealed accuracy is 0.282 (sealed chance 0.293; median of the 71 rows 0.292, 37 rows below
+chance; Jev 1.13.0 0.367), its public-minus-sealed gap 51.8 points (Jev 49.9, JevK5 52.2, Winnow 52.6, so the gap penalty hits nearly every row
+alike), sealed ECE 0.264 (Jev 0.220). The sealed set is far harder than the public tiers for every one-pass decision model, and the v1.4 order is
+decided by how far a system gets above chance there. `jqv-targeted` raises public hard from 0.645 to 0.739; unless the sealed accuracy follows, the
+wider gap can put its v1.4 score below the zero-shot row (under v1.3.0 scoring it would rise). Whether it transfers to the sealed items is the actual
+question of that submission.
+
 | Intelligence / Calibration / Speed / Cost | 86.1 / 79.0 / 74.6 / 47.5 | 76.1 / 74.9 / 67.6 / 52.8 |
 | easy / standard / judge | 1.000 / 0.958 / 0.925 | 1.000 / 0.958 / 0.925 |
 | hard (220 items) | 0.645 (142/220) | 0.314 (69 correct, 109 unanswered) |

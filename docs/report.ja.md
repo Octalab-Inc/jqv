@@ -26,6 +26,7 @@ POST /decision
 5. **外部測定でも public の数値は再現され、Jev との差は縮まらない。** Benchmark Heaven は 32B zero-shot を、まず Mac へのトンネル経由で
    （JevBench v1.2.7、partial row: easy 1.000 / standard 0.958 / judge 0.925 / public hard 0.622、Score 67.2）、次に公開した serving code を
    自前の H100 で動かして全 534 決定で（v1.2.8）測定した: **36 中 8 位、JevBench Score 70.1**、hard は全 220 問で 0.645（Jev 0.741）、Calibration 79.0。
+   再採点後は v1.3.0 で 48 中 6 位（68.6）、sealed 308 問を加えた v1.4.0 で 71 中 12 位（44.4、sealed 精度 0.282 は field の中央値 0.292 と同水準）。
 
 ## 何を作ったか
 
@@ -618,7 +619,16 @@ partial row は順位付きの完全な row に置き換わった（[v1.2.8](htt
 
 | 項目 | v1.2.8（先方の H100、全 534 決定） | v1.2.7（Mac へのトンネル、534 中 425） |
 |---|---:|---:|
-| 順位 / JevBench Score | **36 中 8 位 / 70.1** | 順位なし / 67.2 |
+| 順位 / JevBench Score | **36 中 8 位 / 70.1**（v1.3.0 再採点 48 中 6 位 / 68.6、v1.4.0 71 中 12 位 / 44.4） | 順位なし / 67.2 |
+
+その後の再採点（測定は同じ）: v1.3.0（Intelligence を chance 補正）では **48 中 6 位、68.6**（I 79 / C 79 / S 75 / K 47）。
+v1.4.0（2026-09 時点の公式。sealed 308 問を加え、調和平均、public と sealed の精度差が 25 pt を超えると減点）では **71 中 12 位、44.4**。
+jqv の sealed 精度は 0.282（sealed の chance は 0.293、71 row の中央値 0.292、37 row が chance 未満。Jev 1.13.0 は 0.367）、public との差は 51.8 pt
+（Jev 49.9、JevK5 52.2、Winnow 52.6 で、差の罰則はほぼ全 row に同程度に掛かる）。sealed の ECE は 0.264（Jev 0.220）。
+つまり sealed は one-pass の decision model 全体にとって public より桁違いに難しく、v1.4 の順位は sealed でどれだけ chance を超えるかで決まる。
+`jqv-targeted` は public hard を 0.645 → 0.739 に上げるので、sealed が伴わなければ public との差が広がって v1.4 の score は zero-shot row を下回り得る
+（v1.3.0 の採点では上がる）。sealed で効くかどうかが、この提出で本当に知りたいこと。
+
 | Intelligence / Calibration / Speed / Cost | 86.1 / 79.0 / 74.6 / 47.5 | 76.1 / 74.9 / 67.6 / 52.8 |
 | easy / standard / judge | 1.000 / 0.958 / 0.925 | 1.000 / 0.958 / 0.925 |
 | hard（220 問） | 0.645（142/220） | 0.314（正解 69、未回答 109） |
