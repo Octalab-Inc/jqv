@@ -1,6 +1,6 @@
 ---
 title: 32B を v2 mix で学習し、gate を通れば jqv-targeted として JevBench に 1 回だけ再提出する
-status: pending
+status: done
 priority: P1
 created_at: 2026-09-23T09:56:52+09:00
 depends_on:
@@ -60,3 +60,21 @@ uv run python scripts/compare_runs.py --dataset jmmlu --runs "zero-shot GB10=pac
 
 - 条件は提案どおり（mix、A で学習、B で synth、A で MMLU / JMMLU / JevBench）。
 - 今は提出せず、32B v2 の結果を見てから 1 回だけ再提出。gate は Success のとおり。72 前後に留まるなら見送る。
+
+# Result
+
+- Changed: `docs/jevbench-serving.md`（「Targeted configuration」節: checkpoint の取得、環境変数、/health の期待値、public tier の数値）、`docs/report.ja.md` /
+  `docs/report.md`（32B v2 節）、`README.md`（Findings 8）、`.gitignore`（JevBench の server.log を追跡しない）、`results/public/jevbench_targeted_request.md`（提出文）。
+  結果: `results/jevbench/qwen3-32b_hardfam_v2_T/{easy,standard,hard}`、`results/jevbench_families_32b_v2.json`、`results/compare_{mmlu,jmmlu}_32b_v2.json`、
+  `results/compare_synth_*_32b_v2.json`、`results/synth_difficulty_32b_v2.md`、`results/*_slot_qwen3-32b_32b-hardfam-v2*`、`results/train_32b-hardfam-v2_log.jsonl`。
+  checkpoint（adapter + head + temperature、148 MB）は GitHub release `targeted-v2-32b`（SHA-256 fbdcb2da…6303）。
+- Verified: 32B v2 head で JevBench public hard 82 / 111 = 0.739（zero-shot 68、v1 head 72。v2 vs zero-shot 19 勝 5 敗 p=0.0066、vs v1 15 勝 5 敗 p=0.041）、
+  temporal_numeric 7 / 15、probability 9 / 10、long_policy 11 / 19、easy 1.000、standard 0.958、served ECE 0.118、Brier 0.390。synth temporal_v2 test 0.716
+  （zero-shot 0.184、v1 head 0.428）、MMLU 0.814（v1 0.821）、JMMLU 0.786（v1 0.779）。GB10 A で `/health` が engine slot、prompt_hash 4f85a0b34776、T 1.8190 を返すことを確認。
+  release の asset URL が 200 を返し、sha256 ファイルの値が一致。
+- Deviations: gate 5 条件のうち ECE のみ v1 より悪い（0.096 → 0.118。zero-shot 0.127 よりは良い）。ユーザーの判断で提出した。
+  JevBench は提出時点で v1.4.0（sealed 308 問、public-to-sealed gap の罰則）に移行しており、jqv の v1.4 row は "jqv (Qwen3-32B zero-shot)" score 44.35（ranked）。
+  提出文には、生成器の scenario を public hard の誤答を読んで設計したこと（public hard は開発 gate、学習データは合成で contamination 0）を明記した。
+  以前の run の `server.log` 22 件は既に追跡済みのまま（今回の分だけ未追跡にした）。
+- Remaining: Benchmark Heaven の測定待ち（jevbench#51、監視中）。held-out / sealed の結果が出たら report に追記する。ECE は決定型の校正集合で温度を当て直す余地がある
+  （`correctness-calibrator` / `proper-scoring-true-prob` の draft）。30 か月上限・金利期間の日割りなど v2 が覆わない計算型が残る。
