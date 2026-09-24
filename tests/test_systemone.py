@@ -86,3 +86,19 @@ def test_real_engine_end_to_end(rt, bridge_items):
     ans = out["answers"]["decision"]
     assert ans["choice"] == it["choices"][it["answer"]]
     assert math.isclose(sum(ans["probabilities"].values()), 1.0, abs_tol=1e-5)
+
+
+def test_query_first_layout_serves(rt, bridge_items):
+    import dataclasses
+
+    from jqv.engine import make_engine
+    from jqv.prompt import PromptBuilder, PromptStyle
+    from jqv.systemone import decide_systemone
+
+    rt2 = dataclasses.replace(rt, prompt=PromptBuilder(rt.tokenizer, PromptStyle(layout="query_first")))
+    it = bridge_items[0]
+    body = {"state": it["state"], "questions": {"q": {"type": "choice", "instructions": it["question"],
+                                                       "criteria": {f"opt_{i}": c for i, c in enumerate(it["choices"])}}}}
+    out = decide_systemone(make_engine("naive", rt2), body, "test")
+    assert set(out["answers"]["q"]["probabilities"]) == {f"opt_{i}" for i in range(len(it["choices"]))}
+    assert out["usage"]["input_tokens"] > len(rt2.prompt.prefix_ids(it["state"], it["question"], it["choices"]))
