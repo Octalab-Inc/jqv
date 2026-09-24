@@ -180,7 +180,89 @@
     },
     "query_first": {
       "label": "qwen3-32b_packed_T_ablate-query_first",
-      "tiers": {},
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "ece": 0.014138010679744184,
+          "brier": 0.0008395165485131687,
+          "ordinal_mae": null,
+          "n": 48,
+          "correct": 48,
+          "vs_state_first": {
+            "won": 0,
+            "lost": 0,
+            "p": 1.0
+          }
+        },
+        "standard": {
+          "accuracy": 0.9722222222222222,
+          "ece": 0.06595316562905082,
+          "brier": 0.05568970485736478,
+          "ordinal_mae": 0.03662586963037029,
+          "n": 72,
+          "correct": 70,
+          "vs_state_first": {
+            "won": 4,
+            "lost": 2,
+            "p": 0.6875
+          }
+        },
+        "hard": {
+          "accuracy": 0.6396396396396397,
+          "ece": 0.10788229646513588,
+          "brier": 0.5082534602258207,
+          "ordinal_mae": 0.7408821635569135,
+          "n": 111,
+          "correct": 71,
+          "vs_state_first": {
+            "won": 7,
+            "lost": 4,
+            "p": 0.548828125
+          }
+        }
+      },
+      "families": {
+        "adversarial": [
+          6,
+          6
+        ],
+        "ambiguous": [
+          3,
+          7
+        ],
+        "judge_hard": [
+          14,
+          17
+        ],
+        "long_policy": [
+          9,
+          19
+        ],
+        "multi_hop": [
+          12,
+          18
+        ],
+        "probability": [
+          6,
+          10
+        ],
+        "routing_hard": [
+          5,
+          5
+        ],
+        "temporal_numeric": [
+          6,
+          15
+        ],
+        "tradeoff": [
+          2,
+          6
+        ],
+        "trap": [
+          8,
+          8
+        ]
+      },
       "mmlu": {
         "accuracy": 0.825,
         "prompt_hash": "8eea6343da2d",
@@ -194,7 +276,89 @@
     },
     "query_first_only": {
       "label": "qwen3-32b_packed_T_ablate-query_first_only",
-      "tiers": {},
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "ece": 0.01829423278104514,
+          "brier": 0.0008041642513678533,
+          "ordinal_mae": null,
+          "n": 48,
+          "correct": 48,
+          "vs_state_first": {
+            "won": 0,
+            "lost": 0,
+            "p": 1.0
+          }
+        },
+        "standard": {
+          "accuracy": 0.9722222222222222,
+          "ece": 0.08283853946098442,
+          "brier": 0.07055398614247173,
+          "ordinal_mae": 0.044672730087768286,
+          "n": 72,
+          "correct": 70,
+          "vs_state_first": {
+            "won": 4,
+            "lost": 2,
+            "p": 0.6875
+          }
+        },
+        "hard": {
+          "accuracy": 0.5765765765765766,
+          "ece": 0.10177792304170291,
+          "brier": 0.5305290065239311,
+          "ordinal_mae": 0.7651214127739271,
+          "n": 111,
+          "correct": 64,
+          "vs_state_first": {
+            "won": 10,
+            "lost": 14,
+            "p": 0.5412561893463135
+          }
+        }
+      },
+      "families": {
+        "adversarial": [
+          4,
+          6
+        ],
+        "ambiguous": [
+          4,
+          7
+        ],
+        "judge_hard": [
+          14,
+          17
+        ],
+        "long_policy": [
+          7,
+          19
+        ],
+        "multi_hop": [
+          12,
+          18
+        ],
+        "probability": [
+          4,
+          10
+        ],
+        "routing_hard": [
+          5,
+          5
+        ],
+        "temporal_numeric": [
+          5,
+          15
+        ],
+        "tradeoff": [
+          2,
+          6
+        ],
+        "trap": [
+          7,
+          8
+        ]
+      },
       "mmlu": {
         "accuracy": 0.81,
         "prompt_hash": "60772808312b",
