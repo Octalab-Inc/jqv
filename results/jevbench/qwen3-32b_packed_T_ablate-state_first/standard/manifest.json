@@ -1,0 +1,21 @@
+{
+  "adapter": "typesafe",
+  "charged_usd": 0.0,
+  "cost_basis": "local_mps_no_billing",
+  "dataset_hash": "914276022fa5f0ea70e4231f2af98e68c67b274b61bea8c440b33890401cd2f9",
+  "delay_s": 0.0,
+  "endpoint": "http://127.0.0.1:8010",
+  "finished_utc": "2026-09-24T04:36:10.756605+00:00",
+  "key_env_used": false,
+  "n_attempted": 72,
+  "n_planned": 72,
+  "price_input_per_m": null,
+  "price_output_per_m": null,
+  "request_options": {},
+  "requested_model": "qwen3-32b_packed_T_ablate-state_first",
+  "resolved_models": [
+    "qwen3-32b_packed_T_ablate-state_first"
+  ],
+  "run_label": "qwen3-32b_packed_T_ablate-state_first",
+  "started_utc": "2026-09-24T04:35:43.968753+00:00"
+}

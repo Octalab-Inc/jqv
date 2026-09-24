@@ -1,0 +1,210 @@
+{
+  "model": "qwen3-32b",
+  "layouts": {
+    "state_first": {
+      "label": "qwen3-32b_packed_T_ablate-state_first",
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "ece": 0.013724476409455177,
+          "brier": 0.0005877778950998441,
+          "ordinal_mae": null,
+          "n": 48,
+          "correct": 48
+        },
+        "standard": {
+          "accuracy": 0.9444444444444444,
+          "ece": 0.10079380962997674,
+          "brier": 0.11496412566321552,
+          "ordinal_mae": 0.06372725777328014,
+          "n": 72,
+          "correct": 68
+        },
+        "hard": {
+          "accuracy": 0.6126126126126126,
+          "ece": 0.12682046920799459,
+          "brier": 0.51630693285918,
+          "ordinal_mae": 0.7658459801847736,
+          "n": 111,
+          "correct": 68
+        }
+      },
+      "families": {
+        "adversarial": [
+          6,
+          6
+        ],
+        "ambiguous": [
+          5,
+          7
+        ],
+        "judge_hard": [
+          14,
+          17
+        ],
+        "long_policy": [
+          9,
+          19
+        ],
+        "multi_hop": [
+          10,
+          18
+        ],
+        "probability": [
+          4,
+          10
+        ],
+        "routing_hard": [
+          5,
+          5
+        ],
+        "temporal_numeric": [
+          4,
+          15
+        ],
+        "tradeoff": [
+          3,
+          6
+        ],
+        "trap": [
+          8,
+          8
+        ]
+      },
+      "mmlu": {
+        "accuracy": 0.80625,
+        "prompt_hash": "4f85a0b34776",
+        "temperature": 3.022865176020462,
+        "nll_raw": 0.9463374614715576,
+        "nll_T": 0.5351867079734802,
+        "ece_raw": 0.13923881754279138,
+        "ece_T": 0.024800490438938116,
+        "questions_per_sec": 5.645636604375117
+      }
+    },
+    "repeat_question": {
+      "label": "qwen3-32b_packed_T_ablate-repeat_question",
+      "tiers": {
+        "easy": {
+          "accuracy": 1.0,
+          "ece": 0.028201700847906325,
+          "brier": 0.002399105936411201,
+          "ordinal_mae": null,
+          "n": 48,
+          "correct": 48,
+          "vs_state_first": {
+            "won": 0,
+            "lost": 0,
+            "p": 1.0
+          }
+        },
+        "standard": {
+          "accuracy": 0.8888888888888888,
+          "ece": 0.05391710759916651,
+          "brier": 0.15762334053222118,
+          "ordinal_mae": 0.09191317025882502,
+          "n": 72,
+          "correct": 64,
+          "vs_state_first": {
+            "won": 0,
+            "lost": 4,
+            "p": 0.125
+          }
+        },
+        "hard": {
+          "accuracy": 0.6216216216216216,
+          "ece": 0.0895351947260064,
+          "brier": 0.5094915458973165,
+          "ordinal_mae": 0.7778299432247877,
+          "n": 111,
+          "correct": 69,
+          "vs_state_first": {
+            "won": 2,
+            "lost": 1,
+            "p": 1.0
+          }
+        }
+      },
+      "families": {
+        "adversarial": [
+          6,
+          6
+        ],
+        "ambiguous": [
+          5,
+          7
+        ],
+        "judge_hard": [
+          14,
+          17
+        ],
+        "long_policy": [
+          9,
+          19
+        ],
+        "multi_hop": [
+          10,
+          18
+        ],
+        "probability": [
+          5,
+          10
+        ],
+        "routing_hard": [
+          5,
+          5
+        ],
+        "temporal_numeric": [
+          5,
+          15
+        ],
+        "tradeoff": [
+          2,
+          6
+        ],
+        "trap": [
+          8,
+          8
+        ]
+      },
+      "mmlu": {
+        "accuracy": 0.825,
+        "prompt_hash": "f8ff345d7f86",
+        "temperature": 2.9613076447551827,
+        "nll_raw": 0.8833827376365662,
+        "nll_T": 0.49448683857917786,
+        "ece_raw": 0.12698401469737292,
+        "ece_T": 0.03480254769325259,
+        "questions_per_sec": 2.5234935650078003
+      }
+    },
+    "query_first": {
+      "label": "qwen3-32b_packed_T_ablate-query_first",
+      "tiers": {},
+      "mmlu": {
+        "accuracy": 0.825,
+        "prompt_hash": "8eea6343da2d",
+        "temperature": 2.9609221220468087,
+        "nll_raw": 0.8848982453346252,
+        "nll_T": 0.4946582019329071,
+        "ece_raw": 0.12711351118981834,
+        "ece_T": 0.03287817589938643,
+        "questions_per_sec": 2.2702742426477114
+      }
+    },
+    "query_first_only": {
+      "label": "qwen3-32b_packed_T_ablate-query_first_only",
+      "tiers": {},
+      "mmlu": {
+        "accuracy": 0.81,
+        "prompt_hash": "60772808312b",
+        "temperature": 3.014490961923561,
+        "nll_raw": 0.9501604437828064,
+        "nll_T": 0.535720944404602,
+        "ece_raw": 0.14098039411008362,
+        "ece_T": 0.030040884166955974,
+        "questions_per_sec": 2.703962214370491
+      }
+    }
+  }
+}
