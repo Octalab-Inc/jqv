@@ -38,8 +38,16 @@ class DecisionEngine:
         return self._decide_plain(state, questions)
 
     def _decide_plain(self, state: str, questions: list[Question]) -> list[Decision]:
-        prefix, suffixes, choice_ids = self.encode(state, questions)
-        hidden = self.readout_hidden(prefix, suffixes)
+        p = self.rt.prompt
+        if p.per_question_prefix:
+            # query-first layouts: the state comes after the question, so every question has its own prefix and
+            # nothing is shared across questions (one forward per question, whatever the engine).
+            hidden = torch.cat([self.readout_hidden(p.prefix_ids(state, q.question, q.choices, q.labels),
+                                                    [p.suffix_ids(q.question, q.choices, q.labels)]) for q in questions], 0)
+            choice_ids = [p.choice_token_ids(len(q.choices), q.labels) for q in questions]
+        else:
+            prefix, suffixes, choice_ids = self.encode(state, questions)
+            hidden = self.readout_hidden(prefix, suffixes)
         return decisions_from_hidden(hidden, self.rt.lm_head, choice_ids, self.temperature, readout=self.readout)
 
     def _decide_perm_avg(self, state: str, questions: list[Question]) -> list[Decision]:

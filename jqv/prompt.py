@@ -15,6 +15,13 @@ from functools import lru_cache
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 PROMPT_FORMAT_VERSION = 1  # bump when prefix_text / suffix_text layout changes
 
+# Prompt-order ablation. state_first is jqv's design (the state is prefilled once and shared by every question);
+# repeat_question keeps the shared prefix and puts the question block twice before the answer cue; query_first and
+# query_first_only put the question BEFORE the state, so the state's representation is question-conditioned but the
+# prefix is per question (no sharing). See docs/report.md, "Prompt order".
+LAYOUTS = ("state_first", "repeat_question", "query_first", "query_first_only")
+PER_QUESTION_PREFIX_LAYOUTS = ("query_first", "query_first_only")
+
 DEFAULT_SYSTEM = (
     "You are a decision model. Read the document, then answer each question by choosing "
     "exactly one option. Reply with the option letter only."
@@ -27,11 +34,15 @@ class PromptStyle:
     system: str = DEFAULT_SYSTEM
     answer_cue: str = "Answer:"
     letter_prefix: str = " "  # readout token = letter_prefix + letter (" A", " B", ...)
+    layout: str = "state_first"  # one of LAYOUTS
 
 
 def prompt_hash(style: PromptStyle) -> str:
     """Short stable id of the prompt layout + style. Calibration is only valid for the prompt it was fitted on."""
-    payload = json.dumps({"format": PROMPT_FORMAT_VERSION, **asdict(style)}, sort_keys=True, ensure_ascii=False)
+    fields = asdict(style)
+    if fields.get("layout", "state_first") == "state_first":
+        fields.pop("layout", None)  # the default layout keeps the hash it had before `layout` existed (4f85a0b34776)
+    payload = json.dumps({"format": PROMPT_FORMAT_VERSION, **fields}, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
 
 
@@ -39,21 +50,41 @@ class PromptBuilder:
     def __init__(self, tokenizer, style: PromptStyle | None = None):
         self.tok = tokenizer
         self.style = style or PromptStyle()
+        if self.style.layout not in LAYOUTS:
+            raise ValueError(f"unknown prompt layout {self.style.layout!r}; choose from {LAYOUTS}")
         self._choice_ids = self._resolve_choice_ids()
 
     @property
     def hash(self) -> str:
         return prompt_hash(self.style)
 
+    @property
+    def per_question_prefix(self) -> bool:
+        """True when the prefix contains the question (query-first layouts): nothing can be shared across questions."""
+        return self.style.layout in PER_QUESTION_PREFIX_LAYOUTS
+
     # ----- text -----
-    def prefix_text(self, state: str) -> str:
-        doc = f"Document:\n{state}\n\n" if state.strip() else ""
+    def _head(self) -> str:
         if self.style.chat:
-            return (
-                f"<|im_start|>system\n{self.style.system}<|im_end|>\n"
-                f"<|im_start|>user\n{doc}"
-            )
-        return doc
+            return f"<|im_start|>system\n{self.style.system}<|im_end|>\n<|im_start|>user\n"
+        return ""
+
+    @staticmethod
+    def _doc(state: str) -> str:
+        return f"Document:\n{state}\n\n" if state.strip() else ""
+
+    def question_block(self, question: str, choices: list[str], labels: list[str] | None = None) -> str:
+        labels = self.resolve_labels(len(choices), labels)
+        opts = "\n".join(f"{labels[i]}. {c}" for i, c in enumerate(choices))
+        return f"Question:\n{question}\n\nOptions:\n{opts}"
+
+    def prefix_text(self, state: str, question: str | None = None, choices: list[str] | None = None,
+                    labels: list[str] | None = None) -> str:
+        if self.per_question_prefix:
+            if question is None or choices is None:
+                raise ValueError(f"layout {self.style.layout!r} puts the question before the state: pass question and choices")
+            return self._head() + self.question_block(question, choices, labels) + "\n\n" + self._doc(state)
+        return self._head() + self._doc(state)
 
     @staticmethod
     def resolve_labels(n: int, labels: list[str] | None) -> list[str]:
@@ -65,22 +96,29 @@ class PromptBuilder:
             raise ValueError(f"labels must be {n} distinct letters from A-Z, got {labels}")
         return list(labels)
 
+    def _tail(self) -> str:
+        if self.style.chat:
+            return f"<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n{self.style.answer_cue}"
+        return f"\n{self.style.answer_cue}"
+
     def suffix_text(self, question: str, choices: list[str], labels: list[str] | None = None) -> str:
         if not 2 <= len(choices) <= len(LETTERS):
             raise ValueError(f"choices must have 2..{len(LETTERS)} entries, got {len(choices)}")
-        labels = self.resolve_labels(len(choices), labels)
-        opts = "\n".join(f"{labels[i]}. {c}" for i, c in enumerate(choices))
-        body = f"Question:\n{question}\n\nOptions:\n{opts}\n\nAnswer with the letter only."
-        if self.style.chat:
-            return (
-                f"{body}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
-                f"{self.style.answer_cue}"
-            )
-        return f"{body}\n{self.style.answer_cue}"
+        block = self.question_block(question, choices, labels)
+        instr = "Answer with the letter only."
+        layout = self.style.layout
+        if layout == "repeat_question":
+            body = f"{block}\n\n{block}\n\n{instr}"
+        elif layout == "query_first_only":
+            body = instr
+        else:  # state_first, query_first
+            body = f"{block}\n\n{instr}"
+        return body + self._tail()
 
     # ----- ids -----
-    def prefix_ids(self, state: str) -> list[int]:
-        return self.tok.encode(self.prefix_text(state), add_special_tokens=False)
+    def prefix_ids(self, state: str, question: str | None = None, choices: list[str] | None = None,
+                   labels: list[str] | None = None) -> list[int]:
+        return self.tok.encode(self.prefix_text(state, question, choices, labels), add_special_tokens=False)
 
     def suffix_ids(self, question: str, choices: list[str], labels: list[str] | None = None) -> list[int]:
         return self.tok.encode(self.suffix_text(question, choices, labels), add_special_tokens=False)
@@ -95,7 +133,10 @@ class PromptBuilder:
         enc = self.tok(text, add_special_tokens=False, return_offsets_mapping=True)
         ids, offsets = enc["input_ids"], enc["offset_mapping"]
         head = f"Question:\n{question}\n\nOptions:\n"
-        pos, ends = len(head), []
+        start = text.rfind(self.question_block(question, choices, labels))  # the LAST question block in the suffix
+        if start < 0:
+            raise ValueError(f"layout {self.style.layout!r} has no options in the suffix; the slot head needs option spans there")
+        pos, ends = start + len(head), []
         for i, c in enumerate(choices):
             line = f"{labels[i]}. {c}"
             char_end = pos + len(line) - 1  # index of the option's last character

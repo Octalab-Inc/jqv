@@ -16,12 +16,14 @@ def add_model_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--model", default=None, help="HF model id (default: $JQV_MODEL or Qwen/Qwen3-1.7B)")
     ap.add_argument("--dtype", default=None, help="float32|bfloat16|float16 (default: bfloat16 on GPU/MPS)")
     ap.add_argument("--device", default=None)
+    ap.add_argument("--layout", default=None, choices=["state_first", "repeat_question", "query_first", "query_first_only"],
+                    help="prompt order (default state_first: shared state, then the question)")
 
 
 def load_rt(args):
     from jqv.model import load_runtime
 
-    return load_runtime(args.model, args.device, args.dtype)
+    return load_runtime(args.model, args.device, args.dtype, layout=getattr(args, "layout", None))
 
 
 def dump_json(obj, path: Path) -> None:

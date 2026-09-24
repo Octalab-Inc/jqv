@@ -54,9 +54,9 @@ class Runtime:
             torch.mps.synchronize()
 
 
-def default_style_for(model_id: str) -> PromptStyle:
+def default_style_for(model_id: str, layout: str | None = None) -> PromptStyle:
     """Chat template (thinking disabled) for instruct models, plain text for *-Base models."""
-    return PromptStyle(chat=("base" not in model_id.lower()))
+    return PromptStyle(chat=("base" not in model_id.lower()), layout=layout or "state_first")
 
 
 def load_runtime(
@@ -65,6 +65,7 @@ def load_runtime(
     dtype: str | None = None,
     attn_implementation: str = "sdpa",
     style: PromptStyle | None = None,
+    layout: str | None = None,
 ) -> Runtime:
     model_id = model_id or DEFAULT_MODEL
     dev = pick_device(device)
@@ -73,5 +74,9 @@ def load_runtime(
     model = AutoModelForCausalLM.from_pretrained(model_id, dtype=dt, attn_implementation=attn_implementation)
     model.to(dev).eval()
     if style is None:
-        style = default_style_for(model_id)
+        style = default_style_for(model_id, layout)
+    elif layout:
+        from dataclasses import replace
+
+        style = replace(style, layout=layout)
     return Runtime(model_id=model_id, model=model, tokenizer=tok, device=dev, dtype=dt, prompt=PromptBuilder(tok, style))

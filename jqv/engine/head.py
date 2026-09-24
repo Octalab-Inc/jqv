@@ -48,9 +48,9 @@ class HeadEngine(DecisionEngine):
 
     @torch.inference_mode()
     def _decide_plain(self, state: str, questions: list[Question]) -> list[Decision]:
-        prefix = self.rt.prompt.prefix_ids(state)
         exs = []
         for q in questions:
+            prefix = self.rt.prompt.prefix_ids(state, q.question, q.choices, q.labels)  # per question only for query-first layouts
             suffix, ends = self.rt.prompt.suffix_ids_with_spans(q.question, q.choices, q.labels)
             exs.append(Example(prefix + suffix, [len(prefix) + e for e in ends], 0))
         out: list[Decision] = []

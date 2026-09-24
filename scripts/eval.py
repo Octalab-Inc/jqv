@@ -88,13 +88,14 @@ def main():
     m.update(engine=a.engine, model=rt.model_id, dtype=str(rt.dtype), dataset=a.dataset, seconds=secs,
              questions_per_sec=len(y) / secs, prompt_hash=rt.prompt.hash, n_val=len(val),
              choice_counts=sorted({int(c) for c in k}), shots=a.shots, shots_mode=a.shots_mode if a.shots else None,
-             perm_avg=a.perm_avg)
+             perm_avg=a.perm_avg, layout=rt.prompt.style.layout)
     if a.engine == "generate":
         m["accuracy_note"] = "generate engine: probabilities are one-hot, calibration metrics not meaningful"
     print(m)
 
     tag = (f"{a.dataset.replace(':', '-')}_{a.engine}_{slug(rt.model_id)}" + (f"_{Path(a.head_dir).parent.name}" if a.head_dir else "")
-           + (f"_shots{a.shots}{'fixed' if a.shots_mode == 'fixed' else ''}" if a.shots else "") + ("_permavg" if a.perm_avg else ""))
+           + (f"_shots{a.shots}{'fixed' if a.shots_mode == 'fixed' else ''}" if a.shots else "") + ("_permavg" if a.perm_avg else "")
+           + (f"_layout-{a.layout}" if a.layout and a.layout != "state_first" else ""))
     np.savez(RESULTS / f"{tag}.npz", logits=z, labels=y, k=k, is_val=is_val)
     dump_json(m, RESULTS / f"{tag}.json")
 

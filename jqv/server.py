@@ -4,7 +4,8 @@
     -> {"engine": "packed", "decisions": [{"probabilities": [...], "calibrated_probabilities": [...], ...}]}
 
 Configuration via env: JQV_MODEL, JQV_ENGINE (naive|kvcache|packed|shared|generate|slot|pointer), JQV_TEMPERATURE_FILE,
-JQV_DTYPE, JQV_DEVICE, JQV_PERM_AVG=1 (option-rotation averaging), JQV_HEAD_DIR (for slot|pointer).
+JQV_DTYPE, JQV_DEVICE, JQV_PERM_AVG=1 (option-rotation averaging), JQV_HEAD_DIR (for slot|pointer),
+JQV_LAYOUT (prompt order: state_first | repeat_question | query_first | query_first_only).
 Or run `python -m jqv.server --model ... --engine ...`.
 
 Also serves `POST /v1/systemone`, the TypeSafe-compatible wire format used by JevBench (see jqv/systemone.py).
@@ -37,7 +38,7 @@ def load_calibration(model_id: str) -> TemperatureScaler | None:
     if not path:
         return None
     ts = TemperatureScaler.load(path)
-    ts.check_compatible(model_id, prompt_hash(default_style_for(model_id)))
+    ts.check_compatible(model_id, prompt_hash(default_style_for(model_id, os.environ.get("JQV_LAYOUT") or None)))
     return ts
 
 
@@ -45,7 +46,7 @@ def load_calibration(model_id: str) -> TemperatureScaler | None:
 async def lifespan(app: FastAPI):
     model_id = os.environ.get("JQV_MODEL") or DEFAULT_MODEL
     ts = load_calibration(model_id)
-    rt = load_runtime(model_id, os.environ.get("JQV_DEVICE"), os.environ.get("JQV_DTYPE"))
+    rt = load_runtime(model_id, os.environ.get("JQV_DEVICE"), os.environ.get("JQV_DTYPE"), layout=os.environ.get("JQV_LAYOUT") or None)
     _state["rt"] = rt
     _state["calibration"] = CalibrationInfo(**ts.info()) if ts else None
     kw = {"perm_avg": os.environ.get("JQV_PERM_AVG", "") == "1"}
@@ -65,6 +66,7 @@ def health():
     return {"ok": rt is not None, "model": getattr(rt, "model_id", None),
             "engine": getattr(_state.get("engine"), "name", None), "device": str(getattr(rt, "device", None)),
             "prompt_hash": rt.prompt.hash if rt else None,
+            "layout": rt.prompt.style.layout if rt else None,
             "calibration": _state["calibration"].model_dump() if _state.get("calibration") else None}
 
 
