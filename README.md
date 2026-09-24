@@ -76,6 +76,10 @@ Findings, in one line each (details in the report):
    probability 9 / 10, Brier 0.390) with MMLU/JMMLU unchanged; ECE (0.118) is worse than the first targeted head (0.096). This
    configuration is submitted to Benchmark Heaven as its own row, `jqv-targeted` (checkpoint in the `targeted-v2-32b` release,
    instructions in [docs/jevbench-serving.md](docs/jevbench-serving.md)); the held-out and sealed items are the real test.
+9. Prompt-order ablation at 32B: reading the question before the state (Q → state → Q) moves JevBench hard by +3 / 111 (7 won /
+   4 lost, p=0.55; gains on multi_hop, temporal and probability, losses on ambiguous) while costing 7.5× at 10 questions per state
+   and 18× at 100, so the state-first shared prefill gives up almost nothing; repeating the question after the state adds +1.9 MMLU
+   points but nothing on JevBench hard and loses 4 standard items.
 
 ## Quick start
 

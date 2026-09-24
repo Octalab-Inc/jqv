@@ -995,6 +995,72 @@ checkpoint は GitHub release `targeted-v2-32b`、手順は `docs/jevbench-servi
 4. **但し書き。** 生成器の scenario は public hard の落とした問題を読んで設計したので、public hard は我々にとって開発 gate であり held-out ではない
 （学習データ自体は合成で contamination 0）。Benchmark Heaven の held-out 109 問と sealed 308 問が本当の試験で、そこでの結果は別途記録する。
 
+## prompt 順序の ablation: shared prefill（state → Q）は question 条件付き表現（Q → state → Q）に対してどれだけ損しているか
+
+jqv の設計判断は「state を 1 回 prefill して多数の question を分岐させる」ことで、Qwen3 の causal attention では state の hidden state は後ろに来る
+question を知らずに作られる。question を先に読ませれば state の各 token が「何を判定するか」を知った状態で表現されるが、prefix が question に依存するので
+共有できなくなる。この差を同じ backbone・同じ vocabulary readout・同じ温度手順で実測した（`PromptStyle.layout`、`--layout` / `JQV_LAYOUT`。
+既定 layout の prompt_hash 4f85a0b34776 は不変で、他 layout は別 hash になるので温度は layout ごとに MMLU val 400 で当て直す）。
+
+| 条件 | prompt | shared prefix | 実装 |
+|---|---|:---:|---|
+| A `state_first`（現行） | state → Q | ○ | 変更なし |
+| B `repeat_question` | state → Q → Q | ○ | suffix に question block を 2 回 |
+| C `query_first` | Q → state → Q | × | prefix = system + Q + state、suffix = Q + cue。question ごとに forward |
+| D `query_first_only` | Q → state | × | prefix = system + Q + state、suffix = cue のみ |
+
+32B zero-shot（packed engine、GB10、A と B は host A、C と D は host B。host A の A は以前 host B で取った zero-shot と 111 問すべて予測が一致）:
+
+| layout | shared | easy | standard | hard | hard: A との対応比較 | hard ECE | Brier | ordinal MAE | standard ECE |
+|---|:---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| A state → Q | ○ | 1.000 | 0.944 (68/72) | 0.613 (68/111) | - | 0.127 | 0.516 | 0.766 | 0.101 |
+| B state → Q → Q | ○ | 1.000 | **0.889** (64/72、0 勝 4 敗) | 0.622 (69/111) | 2 勝 1 敗、p=1.0 | **0.090** | 0.509 | 0.778 | 0.054 |
+| C Q → state → Q | × | 1.000 | **0.972** (70/72、4 勝 2 敗) | **0.640** (71/111) | 7 勝 4 敗、p=0.55 | 0.108 | 0.508 | **0.741** | 0.066 |
+| D Q → state | × | 1.000 | 0.972 (70/72) | **0.577** (64/111) | 10 勝 14 敗、p=0.54 | 0.102 | 0.531 | 0.765 | 0.083 |
+
+| hard の family（正解 / 問題数） | long_policy | multi_hop | temporal_numeric | probability | tradeoff | ambiguous | judge_hard | adversarial | trap | routing_hard |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| A | 9/19 | 10/18 | 4/15 | 4/10 | 3/6 | 5/7 | 14/17 | 6/6 | 8/8 | 5/5 |
+| B | 9/19 | 10/18 | 5/15 | 5/10 | 2/6 | 5/7 | 14/17 | 6/6 | 8/8 | 5/5 |
+| C | 9/19 | **12/18** | **6/15** | **6/10** | 2/6 | **3/7** | 14/17 | 6/6 | 8/8 | 5/5 |
+| D | 7/19 | 12/18 | 5/15 | 4/10 | 2/6 | 4/7 | 14/17 | 4/6 | 7/8 | 5/5 |
+
+| MMLU（test 800、同一問題） | 精度 | Δ vs A [95% CI] | 勝/負 | McNemar p | T | NLL raw / +T | ECE raw / +T |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| A | 0.806 | - | | | 3.02 | 0.946 / 0.535 | 0.139 / 0.025 |
+| B | **0.825** | +0.019 [+0.004, +0.034] | 30/15 | **0.036** | 2.96 | 0.883 / 0.494 | 0.127 / 0.035 |
+| C | **0.825** | +0.019 [+0.004, +0.036] | 29/14 | **0.032** | 2.96 | 0.885 / 0.495 | 0.127 / 0.033 |
+| D | 0.810 | +0.004 [−0.001, +0.010] | 4/1 | 0.38 | 3.01 | 0.950 / 0.536 | 0.141 / 0.030 |
+
+| 多 question の速度（32B、GB10、state 2,038 token、question 約 60 token、packed engine、2 回の平均） | Q=1 | Q=10 | Q=100 |
+|---|---:|---:|---:|
+| A state → Q（shared prefill） | 2.36 s（0.42 q/s） | 3.31 s（3.0 q/s） | 13.6 s（7.3 q/s） |
+| C Q → state → Q（question ごとに state を再エンコード） | 2.45 s（0.41 q/s） | 24.9 s（0.40 q/s） | 246 s（0.41 q/s） |
+| C / A | 1.0 倍 | **7.5 倍** | **18 倍** |
+
+C の throughput は question 数に依らず 0.41 q/s（1 question = 1 回の full forward）。1 state 1 question の JevBench では差がなく、jqgrep のような
+1 state 多 question の使い方では A の高速化がそのまま失われる。
+
+読み取れること:
+
+1. **JevBench hard では A ≈ C。** question 条件付き表現（C）は 68 → 71 / 111（7 勝 4 敗、p=0.55）で、111 問の雑音の範囲。方向は仮説どおりで、
+   「state のどこを見るかが要る」family（multi_hop 10 → 12、temporal_numeric 4 → 6、probability 4 → 6）で伸び、ambiguous（5 → 3）と tradeoff で落ちる。
+   standard は 68 → 70 / 72。つまり **state-first の shared prefill は decision task でほとんど損していない**。jqv の設計判断は支持される。
+2. **MMLU では B ≈ C > A**（どちらも +1.9 pt、p ≈ 0.03）。state が短く 1 question の MMLU では、question を後段で繰り返すだけで query-first と同じ利得が出る。
+   ただしこの利得は JevBench hard には出ず（B は +1 問）、B は standard を 4 問落とす（policy の yes/no 1、adequacy 1、routing 2）。長い state では
+   question の繰り返しは効かない、あるいは害になる。
+3. **D（前置だけ）は hard で −4 問**（adversarial 6 → 4、long_policy 9 → 7）。readout の直前に question がないと、query-first の利点は出ない。
+   C の利得は「question を state の前と後の両方に置く」ことで出る。
+4. **校正**: C は hard ECE 0.127 → 0.108、ordinal MAE 0.766 → 0.741 で、上位 2 択が 0.05 未満の近接問題は 7 → 3。logits が尖っただけではなく Brier も
+   同等（0.508）。B は hard ECE 0.090 で最良だが精度は動かない。D は ECE は良いが Brier が悪化。
+5. **コスト**: C / D は state を question ごとに再エンコードするので、JevBench（1 state 1 question）では A と同じだが、多 question では shared prefill の
+   高速化を失う（下の速度表）。A ≈ C なので、この代価を払う理由は今のところない。
+
+結論: **shared prefill はほぼ損していない（A ≈ C）**。query-first の利点は「何を見るべきか」が要る family に小さく現れるが、111 問では有意でなく、
+多 question の高速化と引き換えにするほどではない。MMLU で見えた +1.9 pt は question の繰り返し（B）で取れるが、JevBench には転移しない。
+次に試すなら、A の shared prefill を保ったまま C の利点を取る折衷（state → Q の後に「state の要点を question の観点で要約する」中間 token を分岐内に置く、
+または C で head を学習して A の head と比べる）だが、期待値は +3 / 111 程度。
+
 ## サンプル: jqgrep（jqv による cascade 型 semantic code search、`jqgrep/`）
 
 jqv を「1 つの長い state に多数の decision を掛けるアプリ」として使う例。index も埋め込みも持たず、毎回 live のファイルツリーを見る。

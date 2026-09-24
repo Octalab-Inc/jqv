@@ -979,6 +979,76 @@ temperature on decision-style items. Caveat: the generator scenarios were design
 public hard tier is a development gate, not a held-out measurement (the training data itself is synthetic, 0 shared 8-grams); the held-out 109 and the
 308 sealed decisions at Benchmark Heaven are the real test.
 
+## Prompt order: how much does the state-first shared prefill give up against a question-conditioned state?
+
+jqv prefills the state once and branches every question off it, so under causal attention the state's hidden states are built without
+knowing the question. Reading the question first makes every state token question-conditioned, but the prefix then depends on the question
+and nothing can be shared. We measured the difference with the same backbone, the same vocabulary readout and the same temperature procedure
+(`PromptStyle.layout`, `--layout` / `JQV_LAYOUT`; the default layout keeps `prompt_hash` 4f85a0b34776, the others get their own hash and their
+own temperature fitted on 400 MMLU validation items).
+
+| condition | prompt | shared prefix | implementation |
+|---|---|:---:|---|
+| A `state_first` (current) | state → Q | yes | unchanged |
+| B `repeat_question` | state → Q → Q | yes | the question block twice in the suffix |
+| C `query_first` | Q → state → Q | no | prefix = system + Q + state, suffix = Q + cue; one forward per question |
+| D `query_first_only` | Q → state | no | prefix = system + Q + state, suffix = cue only |
+
+Qwen3-32B zero-shot, packed engine, GB10 (A and B on one host, C and D on the other; the state-first run reproduced the earlier zero-shot
+run item for item on all 111 hard decisions):
+
+| layout | shared | easy | standard | hard | hard, paired vs A | hard ECE | Brier | ordinal MAE | standard ECE |
+|---|:---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| A state → Q | yes | 1.000 | 0.944 (68/72) | 0.613 (68/111) | - | 0.127 | 0.516 | 0.766 | 0.101 |
+| B state → Q → Q | yes | 1.000 | **0.889** (64/72, 0 won / 4 lost) | 0.622 (69/111) | 2 / 1, p = 1.0 | **0.090** | 0.509 | 0.778 | 0.054 |
+| C Q → state → Q | no | 1.000 | **0.972** (70/72, 4 / 2) | **0.640** (71/111) | 7 / 4, p = 0.55 | 0.108 | 0.508 | **0.741** | 0.066 |
+| D Q → state | no | 1.000 | 0.972 (70/72) | **0.577** (64/111) | 10 / 14, p = 0.54 | 0.102 | 0.531 | 0.765 | 0.083 |
+
+| hard tier by family (correct / items) | long_policy | multi_hop | temporal_numeric | probability | tradeoff | ambiguous | judge_hard | adversarial | trap | routing_hard |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| A | 9/19 | 10/18 | 4/15 | 4/10 | 3/6 | 5/7 | 14/17 | 6/6 | 8/8 | 5/5 |
+| B | 9/19 | 10/18 | 5/15 | 5/10 | 2/6 | 5/7 | 14/17 | 6/6 | 8/8 | 5/5 |
+| C | 9/19 | **12/18** | **6/15** | **6/10** | 2/6 | **3/7** | 14/17 | 6/6 | 8/8 | 5/5 |
+| D | 7/19 | 12/18 | 5/15 | 4/10 | 2/6 | 4/7 | 14/17 | 4/6 | 7/8 | 5/5 |
+
+| MMLU (test 800, same items) | accuracy | Δ vs A [95% CI] | won / lost | McNemar p | T | NLL raw / +T | ECE raw / +T |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| A | 0.806 | - | | | 3.02 | 0.946 / 0.535 | 0.139 / 0.025 |
+| B | **0.825** | +0.019 [+0.004, +0.034] | 30 / 15 | **0.036** | 2.96 | 0.883 / 0.494 | 0.127 / 0.035 |
+| C | **0.825** | +0.019 [+0.004, +0.036] | 29 / 14 | **0.032** | 2.96 | 0.885 / 0.495 | 0.127 / 0.033 |
+| D | 0.810 | +0.004 [−0.001, +0.010] | 4 / 1 | 0.38 | 3.01 | 0.950 / 0.536 | 0.141 / 0.030 |
+
+| many questions per state (32B, GB10, state 2,038 tokens, about 60 tokens per question, packed engine, mean of 2 runs) | Q=1 | Q=10 | Q=100 |
+|---|---:|---:|---:|
+| A state → Q (shared prefill) | 2.36 s (0.42 q/s) | 3.31 s (3.0 q/s) | 13.6 s (7.3 q/s) |
+| C Q → state → Q (the state re-encoded per question) | 2.45 s (0.41 q/s) | 24.9 s (0.40 q/s) | 246 s (0.41 q/s) |
+| C / A | 1.0× | **7.5×** | **18×** |
+
+C's throughput is 0.41 q/s whatever the number of questions (one full forward per question). On JevBench (one question per state) there is no
+difference; in one-state-many-questions uses such as jqgrep, A's speed-up is lost entirely.
+
+What this shows:
+
+1. **On JevBench hard, A ≈ C.** The question-conditioned state moves 68 → 71 / 111 (7 won / 4 lost, p = 0.55), inside the noise of 111 items.
+   The direction is the hypothesised one: gains on the families where the model has to know what to look for in the state (multi_hop 10 → 12,
+   temporal_numeric 4 → 6, probability 4 → 6), losses on ambiguous (5 → 3) and tradeoff. Standard goes 68 → 70 / 72. The state-first shared
+   prefill gives up very little on decision tasks; jqv's design choice holds.
+2. **On MMLU, B ≈ C > A** (+1.9 points each, p ≈ 0.03). With short states and one question, repeating the question after the state captures the
+   whole query-first gain. That gain does not transfer to JevBench hard (B: +1 item), and B loses 4 standard items (a policy yes/no, an adequacy
+   item, two routing items): with long states the repeated question does not help and can hurt.
+3. **D (question before the state only) loses 4 hard items** (adversarial 6 → 4, long_policy 9 → 7). Without the question next to the readout
+   cue the query-first benefit does not appear; C's gain needs the question at both ends.
+4. **Calibration**: C lowers hard ECE 0.127 → 0.108 and ordinal MAE 0.766 → 0.741, with 3 near-ties (top-2 margin < 0.05) instead of 7 and the
+   same Brier (0.508), so its logits are not merely sharper. B has the best hard ECE (0.090) at unchanged accuracy; D improves ECE but worsens
+   Brier.
+5. **Cost**: C and D re-encode the state for every question. On JevBench (one question per state) that costs nothing extra, but with many
+   questions per state the shared-prefill speed-up is lost (table below). Since A ≈ C, nothing justifies paying it today.
+
+Conclusion: the shared prefill is essentially free in accuracy (A ≈ C). Query-first helps a little on the families that need to know what to look
+for, not significantly on 111 items, and not enough to trade the multi-question speed-up for. The +1.9 MMLU points are available by repeating the
+question (B) but do not transfer to JevBench. A next step, if any, would keep A's shared prefill and add a question-conditioned pass inside each
+branch, or train the slot head under C and compare it with the A head; the expected gain is about +3 / 111.
+
 ## Related projects
 
 Several public implementations arrived independently at the same hypotheses in 2026 (read the option-token logits directly
