@@ -91,5 +91,4 @@ uv run python scripts/jevbench_families.py --labels qwen3-32b_packed_T_gb10 qwen
   MMLU では B ≈ C > A、+1.9 pt、p≈0.03；D は hard −4）。
 - Deviations: server 経路（`decide_systemone`）と `bench.py` が query-first layout で prefix を question なしで作ろうとして落ちたため、修正して C / D の JevBench と
   bench を再実行した（eval 経路と MMLU は最初から正常）。A の JevBench は host A で再測定（以前の host B の zero-shot と 111 問すべて一致）。
-- Remaining: 学習済み head を C で学習し直して A の head と比べる、A の shared prefill を保ったまま分岐内に question 条件付きの pass を足す折衷案。
-  いずれも期待値は hard +3 / 111 程度で、多 question の 7.5〜18 倍のコストに見合わない限り優先度は低い。
+- Remaining: なし。C での head 再学習と shared prefill を保った折衷案はユーザーが却下（2026-09-24）。既定 layout は state_first のまま。
