@@ -107,7 +107,8 @@ def main():
     plan = []
     for s_tok in a.state_tokens:
         state = make_state(rt, s_tok)
-        s_len = len(rt.prompt.prefix_ids(state))
+        q0 = make_questions(1)[0]  # query-first layouts put the question in the prefix; size the state with one question
+        s_len = len(rt.prompt.prefix_ids(state, q0.question, q0.choices)) if getattr(rt.prompt, "per_question_prefix", False) else len(rt.prompt.prefix_ids(state))
         for nq in a.questions:
             qs = make_questions(nq)
             q_tok = sum(len(rt.prompt.suffix_ids(q.question, q.choices)) for q in qs)
