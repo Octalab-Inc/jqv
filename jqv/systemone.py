@@ -85,7 +85,7 @@ def decide_systemone(engine, body: dict, model_name: str) -> dict:
         metas.append(meta)
     decisions = engine.decide(state, qs)
     pb = engine.rt.prompt
-    if pb.per_question_prefix:  # query-first layouts re-read the state for every question: count it every time
+    if getattr(pb, "per_question_prefix", False):  # query-first layouts re-read the state for every question: count it every time
         n_in = sum(len(pb.prefix_ids(state, q.question, q.choices, q.labels)) + len(pb.suffix_ids(q.question, q.choices, q.labels)) for q in qs)
     else:
         n_in = len(pb.prefix_ids(state)) + sum(len(pb.suffix_ids(q.question, q.choices)) for q in qs)
