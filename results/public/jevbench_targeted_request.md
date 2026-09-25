@@ -23,3 +23,11 @@ JQV_TEMPERATURE_FILE=jqv-targeted-v2-32b/temperature.json uv run uvicorn jqv.ser
 **What we measured on the public tiers** (harness commit 7ce310c, one request at a time): easy 1.000, standard 0.958, hard 82 / 111 = 0.739, hard-tier ECE 0.118, Brier 0.390. On the same 111 hard items the zero-shot row is 68 / 111 (paired: 19 won / 5 lost, exact McNemar p = 0.007); by family the largest moves are temporal_numeric 4 → 7 / 15 and probability 4 → 9 / 10. The report with the training design, the 14B gate and the caveats is in [docs/report.md](https://github.com/Octalab-Inc/jqv/blob/main/docs/report.md).
 
 Thanks again for running these; we will not make any claim about held-out or sealed items until your run.
+
+---
+
+Clean-environment check (2026-09-25 10:09–10:16 JST, GB10 host B, empty directory): `git clone` of main at a1a5f5c → `uv sync` → release
+download (147,942,608 bytes, SHA-256 fbdcb2da…6303 matches) → `tar -xzf` → server started with the four environment variables from the
+request → `/health` after 6 min 20 s: `engine slot`, `prompt_hash 4f85a0b34776`, `temperature 1.818988859597101` (dataset mmlu, n_val 400)
+→ one `POST /v1/systemone` decision answered (refund requested 19 days after delivery under a 14-day rule → noul 0.052, i.e. "no"), zero
+errors in the server log. The instructions in the request work as written.
